@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { envValidationSchema } from './config/env.validation';
 import { AiModule } from './ai/ai.module';
+import { TelegramModule } from './telegram/telegram.module';
 
 @Module({
   imports: [
@@ -9,7 +10,8 @@ import { AiModule } from './ai/ai.module';
       isGlobal: true,
       validationSchema: envValidationSchema,
     }),
-    AiModule
+    AiModule,
+    TelegramModule
   ],
   controllers: [],
   providers: [],
