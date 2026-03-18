@@ -12,7 +12,7 @@ async function bootstrap() {
   const Port = configService.get<number>('PORT') || 3000;
   const ngrokUrl = configService.get<string>('NGROK_URL');
   const token = configService.get<string>('TELEGRAM_BOT_TOKEN');
- 
+
 
   // 2.registrar el webhook de Telegram automáticamente al iniciar la aplicación
   app.useGlobalPipes(new ValidationPipe({
