@@ -1,5 +1,16 @@
-import { IsNumber, IsString, IsOptional, ValidateNested, IsBoolean } from 'class-validator';
+import { IsNumber, IsString, IsOptional, ValidateNested, IsBoolean, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
+
+export class TelegramEntityDto {
+  @IsNumber()
+  offset: number;
+
+  @IsNumber()
+  length: number;
+
+  @IsString()
+  type: string;
+}
 
 export class TelegramChatDto {
   @IsNumber()
@@ -57,6 +68,12 @@ export class TelegramMessageDto {
   @IsString()
   @IsOptional()
   text?: string;
+
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => TelegramEntityDto)
+  entities?: TelegramEntityDto[];   // ← esto faltaba
 }
 
 export class TelegramUpdateDto {

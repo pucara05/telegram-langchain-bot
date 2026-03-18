@@ -28,6 +28,14 @@ export class TelegramController {
       hour12: true,
     });
 
+     // Comando /reset → limpia el historial
+  if (userMessage === '/reset') {
+    this.aiService.clearHistory(chatId);
+    await this.telegramService.sendMessage(chatId, '🧹 Historial limpiado. ¡Empecemos de nuevo!');
+    return;
+  }
+
+
     // Log mensaje del usuario
     this.logger.log(
       `\n┌─────────────────────────────────────\n` +
@@ -36,7 +44,7 @@ export class TelegramController {
       `└─────────────────────────────────────`,
     );
 
-    const aiResponse = await this.aiService.chat(userMessage);
+    const aiResponse = await this.aiService.chat(chatId,userMessage);
 
     // Hora de respuesta del bot
     const responseTimestamp = new Date().toLocaleString('es-CO', {
@@ -48,8 +56,8 @@ export class TelegramController {
     // Log respuesta del bot
     this.logger.log(
       `\n┌─────────────────────────────────────\n` +
-      `│ 🤖 Bot · 🕐 ${responseTimestamp}\n` +
-      `│ 💡 ${aiResponse.slice(0, 150)}${aiResponse.length > 150 ? '...' : ''}\n` +
+      `│ 🤖 Bot · 🕐 ${responseTimestamp}\n` +  
+      `│ 💡${aiResponse}\n` +
       `└─────────────────────────────────────`,
     );
 
