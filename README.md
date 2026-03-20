@@ -23,13 +23,13 @@
 
 # 🤖 Telegram LangChain Bot
 
-Bot inteligente para grupos de Telegram construido con **NestJS** y **LangChain**. Responde mensajes usando IA con memoria conversacional persistente.
+Bot inteligente para grupos de Telegram construido con **NestJS** y **LangChain**. Responde mensajes usando IA con memoria conversacional persistente y herramientas en tiempo real.
 
 ## 🚀 Características
 
 - Recibe mensajes de grupos de Telegram en tiempo real via webhook
-- Responde usando IA (Groq - llama-3.1-8b-instant)
-- Memoria conversacional persistente con **Redis** por chat
+- Responde usando IA con memoria conversacional persistente por chat
+- Herramientas en tiempo real: hora, clima y búsqueda web
 - Arquitectura modular con NestJS
 - Validación de variables de entorno al arrancar
 - Comando `/reset` para limpiar el historial
@@ -38,10 +38,30 @@ Bot inteligente para grupos de Telegram construido con **NestJS** y **LangChain*
 
 - **Runtime:** Node.js
 - **Framework:** NestJS
-- **IA:** LangChain + Groq (llama-3.1-8b-instant)
+- **IA:** LangChain + Mistral (mistral-large-latest)
 - **Memoria:** Redis (Docker)
+- **Herramientas:** OpenWeatherMap, Serper (Google Search)
 - **Tunnel:** ngrok (desarrollo local)
 - **Package Manager:** pnpm
+
+## 🔄 Cambiar de proveedor de IA
+
+LangChain permite cambiar el modelo con mínimas modificaciones. Actualmente usa **Mistral** pero puedes cambiarlo fácilmente:
+```typescript
+// Mistral (actual)
+import { ChatMistralAI } from '@langchain/mistralai';
+const model = new ChatMistralAI({ model: 'mistral-large-latest' });
+
+// Groq + Llama (alternativa gratis, más rápida)
+import { ChatGroq } from '@langchain/groq';
+const model = new ChatGroq({ model: 'llama-3.3-70b-versatile' });
+
+// OpenAI (más estable, de pago)
+import { ChatOpenAI } from '@langchain/openai';
+const model = new ChatOpenAI({ model: 'gpt-4o' });
+```
+
+Solo cambia el import y la instancia en `src/ai/ai.service.ts` — el resto del código no cambia.
 
 ## 📋 Prerrequisitos
 
@@ -49,7 +69,9 @@ Bot inteligente para grupos de Telegram construido con **NestJS** y **LangChain*
 - pnpm
 - Docker y Docker Compose
 - Token de bot de [@BotFather](https://t.me/botfather)
-- API Key de [Groq](https://console.groq.com)
+- API Key de [Mistral AI](https://console.mistral.ai) (gratis, sin tarjeta)
+- API Key de [OpenWeatherMap](https://openweathermap.org/api) (gratis)
+- API Key de [Serper](https://serper.dev) (gratis, 2500 búsquedas/mes)
 - [ngrok](https://ngrok.com)
 
 ## ⚙️ Instalación
@@ -79,30 +101,40 @@ docker-compose up -d
 
 ## 🔐 Variables de Entorno
 ```env
-TELEGRAM_BOT_TOKEN=    # Token de @BotFather
-GROQ_API_KEY=          # API Key de Groq
-NGROK_URL=             # URL de ngrok (desarrollo)
+TELEGRAM_BOT_TOKEN=      # Token de @BotFather
+MISTRAL_API_KEY=         # API Key de Mistral AI
+OPENWEATHER_API_KEY=     # API Key de OpenWeatherMap
+SERPER_API_KEY=          # API Key de Serper
+NGROK_URL=               # URL de ngrok (desarrollo)
 PORT=3000
 REDIS_URL=redis://localhost:6379
+
+# Opcional — si quieres usar Groq en lugar de Mistral
+# GROQ_API_KEY=          # API Key de Groq
 ```
 
 ## 🚀 Uso en Desarrollo
 
-1. Inicia ngrok
+1. Levanta Redis
+```bash
+docker-compose up -d
+```
+
+2. Inicia ngrok
 ```bash
 ngrok http 3000
 ```
 
-2. Copia la URL y pégala en `NGROK_URL` del `.env`
+3. Copia la URL y pégala en `NGROK_URL` del `.env`
 
-3. Inicia el servidor
+4. Inicia el servidor
 ```bash
 pnpm run start:dev
 ```
 
-4. Agrega el bot al grupo de Telegram como administrador
+5. Agrega el bot al grupo de Telegram como administrador
 
-5. Escribe cualquier mensaje — el bot responderá con IA
+6. Escribe cualquier mensaje — el bot responderá con IA
 
 ## 💬 Comandos disponibles
 
@@ -110,20 +142,32 @@ pnpm run start:dev
 |---------|-------------|
 | `/reset` | Limpia el historial de conversación del chat |
 
+## 🛠️ Herramientas disponibles
+
+| Herramienta | Descripción | API |
+|-------------|-------------|-----|
+| `getTime` | Hora actual en cualquier zona horaria | Sin API (reloj del servidor) |
+| `getWeather` | Clima actual de cualquier ciudad | OpenWeatherMap |
+| `searchWeb` | Búsqueda web en tiempo real | Serper (Google Search) |
+
 ## 🏗️ Arquitectura
 ```
 src/
 ├── config/
-│   └── env.validation.ts         # Validación de variables de entorno
+│   └── env.validation.ts              # Validación de variables de entorno
+├── tools/
+│   ├── get-time.tool.ts               # Tool: hora actual por zona horaria
+│   ├── get-weather.tool.ts            # Tool: clima por ciudad
+│   └── search-web.tool.ts             # Tool: búsqueda web con Serper
 ├── ai/
 │   ├── ai.module.ts
-│   └── ai.service.ts             # LangChain + Groq + Redis memory
+│   └── ai.service.ts                  # LangChain + Mistral + Redis memory
 └── telegram/
     ├── dto/
-    │   └── telegram-update.dto.ts # Tipado del payload de Telegram
-    ├── telegram.controller.ts     # Recibe webhooks
+    │   └── telegram-update.dto.ts     # Tipado del payload de Telegram
+    ├── telegram.controller.ts         # Recibe webhooks
     ├── telegram.module.ts
-    └── telegram.service.ts        # Envía mensajes a Telegram
+    └── telegram.service.ts            # Envía mensajes a Telegram
 ```
 
 ## 🔄 Flujo de mensajes
@@ -134,7 +178,13 @@ TelegramController recibe webhook
         ↓
 AiService obtiene historial de Redis
         ↓
-LangChain invoca modelo Groq
+LangChain decide si usar tools
+        ↓
+¿Necesita tool?
+   ├── SÍ → ejecuta tool (getTime/getWeather/searchWeb)
+   │         ↓
+   │    modelo formula respuesta con resultado
+   └── NO → modelo responde directamente
         ↓
 AiService guarda intercambio en Redis
         ↓
