@@ -6,4 +6,7 @@ export const envValidationSchema = Joi.object({
   NGROK_URL: Joi.string().uri().required(),
   PORT: Joi.number().default(3000),
   REDIS_URL: Joi.string().uri().required(),
+  OPENWEATHER_API_KEY: Joi.string().required(),
+  SERPER_API_KEY: Joi.string().required(),
+  MISTRAL_API_KEY: Joi.string().required(),
 }); 

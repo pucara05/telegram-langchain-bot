@@ -15,8 +15,11 @@ importers:
         specifier: ^1.1.32
         version: 1.1.32(openai@6.32.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
       '@langchain/groq':
-        specifier: ^1.1.5
-        version: 1.1.5(@langchain/core@1.1.32(openai@6.32.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0))
+        specifier: ^1.1.2
+        version: 1.1.2(@langchain/core@1.1.32(openai@6.32.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0))
+      '@langchain/mistralai':
+        specifier: ^1.0.7
+        version: 1.0.7(@langchain/core@1.1.32(openai@6.32.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0))
       '@nestjs/common':
         specifier: ^11.0.1
         version: 11.1.17(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -53,6 +56,9 @@ importers:
       rxjs:
         specifier: ^7.8.1
         version: 7.8.2
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3.2.0
@@ -1085,8 +1091,8 @@ packages:
     resolution: {integrity: sha512-ZZNiER5tceFXqZOghfrxNHzM60gcQL5XK/8Ow5+o4OuKHrP1p/RUQBDM9Y1nddi/VmKQj+ncaXXM5KovXTEGGQ==}
     engines: {node: '>=20'}
 
-  '@langchain/groq@1.1.5':
-    resolution: {integrity: sha512-mTimterQUjqGYWocEInVFE7iFtood0ZGNl5aI9fXwFLWIXubT4/tZa+iTqwN7y4hZ5hEJ/EtMLGoT15/SiuUpw==}
+  '@langchain/groq@1.1.2':
+    resolution: {integrity: sha512-vHRLkHAuhOrKHLqPpZqP9/sUV9DEdzyzMS14yG0XseejkqRXJ+yx+3psmSSFn/3kPPRRx+xQ6XeFPS7HWxEfTg==}
     engines: {node: '>=20'}
     peerDependencies:
       '@langchain/core': ^1.0.0
@@ -1131,6 +1137,12 @@ packages:
       zod-to-json-schema:
         optional: true
 
+  '@langchain/mistralai@1.0.7':
+    resolution: {integrity: sha512-5lXqdDnicHTTHMVv08q9Uja3CNkml3+JF3iq3Odfw+uOZ0wvwlQ5w90QNgW5rHluVQ1xnwI8PlBwsD8IhEqpvg==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@langchain/core': ^1.0.0
+
   '@langchain/openai@1.3.0':
     resolution: {integrity: sha512-FDsF6xKCvFduiZcX57fL2Md+DZ+fJubcUN1iwUaEwJOQnq7zFFYj3a/KuQ7EiOFR3hEsnhPilSfxO1VW85wMZw==}
     engines: {node: '>=20'}
@@ -1146,6 +1158,9 @@ packages:
   '@lukeed/csprng@1.1.0':
     resolution: {integrity: sha512-Z7C/xXCiGWsg0KuKsHTKJxbWhpI3Vs5GwLfOean7MGyVFGqdRgBbAjOCh6u4bbjPc/8MJ2pZmK/0DLdCbivLDA==}
     engines: {node: '>=8'}
+
+  '@mistralai/mistralai@1.15.1':
+    resolution: {integrity: sha512-fb995eiz3r0KsBGtRjFV+/iLbX+UpfalxpF+YitT3R6ukrPD4PN+FGwwmYcRFhNAzVzDUtTVxQYnjQWEnwV5nw==}
 
   '@napi-rs/wasm-runtime@0.2.12':
     resolution: {integrity: sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ==}
@@ -4709,7 +4724,7 @@ snapshots:
       - openai
       - ws
 
-  '@langchain/groq@1.1.5(@langchain/core@1.1.32(openai@6.32.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0))':
+  '@langchain/groq@1.1.2(@langchain/core@1.1.32(openai@6.32.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0))':
     dependencies:
       '@langchain/core': 1.1.32(openai@6.32.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
       groq-sdk: 0.37.0
@@ -4747,6 +4762,15 @@ snapshots:
       - svelte
       - vue
 
+  '@langchain/mistralai@1.0.7(@langchain/core@1.1.32(openai@6.32.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0))':
+    dependencies:
+      '@langchain/core': 1.1.32(openai@6.32.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
+      '@mistralai/mistralai': 1.15.1
+      uuid: 13.0.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
   '@langchain/openai@1.3.0(@langchain/core@1.1.32(openai@6.32.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0))(ws@8.19.0)':
     dependencies:
       '@langchain/core': 1.1.32(openai@6.32.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
@@ -4762,6 +4786,15 @@ snapshots:
       js-tiktoken: 1.0.21
 
   '@lukeed/csprng@1.1.0': {}
+
+  '@mistralai/mistralai@1.15.1':
+    dependencies:
+      ws: 8.19.0
+      zod: 4.3.6
+      zod-to-json-schema: 3.25.1(zod@4.3.6)
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   '@napi-rs/wasm-runtime@0.2.12':
     dependencies:
