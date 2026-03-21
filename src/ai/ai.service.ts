@@ -1,7 +1,8 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 //import { ChatGroq } from '@langchain/groq';
-import { ChatMistralAI } from '@langchain/mistralai';
+//import { ChatMistralAI } from '@langchain/mistralai';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import {
   HumanMessage,
   SystemMessage,
@@ -14,9 +15,10 @@ import { getTimeTool } from '../tools/get-time.tool';
 import { createGetWeatherTool } from '../tools/get-weather.tool';
 import { createSearchWebTool } from '../tools/search-web.tool';
 
+
 @Injectable()
 export class AiService implements OnModuleDestroy {
-  private model: ChatMistralAI;
+  private model: ChatGoogleGenerativeAI;
   private modelWithTools: any;
   private redisClient: Redis;
   private tools: any[];
@@ -40,6 +42,7 @@ REGLAS ANTI-ALUCINACIÓN:
 - NUNCA inventes ganadores de competencias, premios o resultados deportivos recientes. Usa searchWeb SIEMPRE
 - Si no sabes algo y no tienes una tool apropiada di honestamente que no tienes esa información
 - NUNCA uses el historial para responder preguntas de hora, clima o precios — SIEMPRE llama la tool de nuevo
+- NUNCA inventes quién ocupa un cargo político actualmente. Usa searchWeb SIEMPRE para presidentes, ministros, directores o cualquier cargo que pueda haber cambiado
 
 REGLAS DE COMPORTAMIENTO:
 - Para saludos preguntas generales o conversación responde directamente SIN usar tools
@@ -51,9 +54,9 @@ REGLAS DE COMPORTAMIENTO:
   private readonly TTL = 86400;
 
   constructor(private config: ConfigService) {
-    this.model = new ChatMistralAI({
-      apiKey: this.config.get<string>('MISTRAL_API_KEY'),
-      model: 'mistral-large-latest',
+    this.model = new ChatGoogleGenerativeAI({
+      apiKey: this.config.get<string>('GEMINI_API_KEY'),
+      model: 'gemini-2.5-flash-lite',
       temperature: 0,
     });
 

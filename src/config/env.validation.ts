@@ -9,4 +9,5 @@ export const envValidationSchema = Joi.object({
   OPENWEATHER_API_KEY: Joi.string().required(),
   SERPER_API_KEY: Joi.string().required(),
   MISTRAL_API_KEY: Joi.string().required(),
+  GEMINI_API_KEY: Joi.string().required(),
 }); 

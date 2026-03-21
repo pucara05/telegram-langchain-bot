@@ -22,6 +22,7 @@
   "dependencies": {
     "@langchain/community": "^1.1.24",
     "@langchain/core": "^1.1.32",
+    "@langchain/google-genai": "^2.1.26",
     "@langchain/groq": "^1.1.2",
     "@langchain/mistralai": "^1.0.7",
     "@nestjs/common": "^11.0.1",
