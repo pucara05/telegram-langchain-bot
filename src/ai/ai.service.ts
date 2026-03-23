@@ -24,7 +24,7 @@ export class AiService implements OnModuleDestroy {
   private tools: any[];
 
   private readonly SYSTEM_PROMPT =
-  `
+    `
 # ROL
 Eres un asistente inteligente en un grupo de Telegram.
 Responde SIEMPRE en español y de forma concisa y clara.
@@ -38,8 +38,11 @@ Tienes 3 herramientas para obtener información en tiempo real:
 - Ejemplos: "¿qué hora es en Japón?", "¿qué día es hoy en Australia?"
 
 ## getWeather
+## getWeather
 - Úsala cuando pregunten por el clima, temperatura, lluvia o condiciones meteorológicas
-- Ejemplos: "¿cómo está el clima en Cúcuta?", "¿está lloviendo en Madrid?"
+- Ejemplos: "¿cómo está el clima en Cúcuta?", "¿está lloviendo en Madrid?", "¿qué temperatura hace en Australia?"
+- IMPORTANTE: Si el usuario dice "Y en X" después de preguntar clima → llama getWeather para X también
+- NUNCA respondas el clima desde tu conocimiento — siempre llama esta tool
 
 ## searchWeb
 - Úsala para cualquier información que pueda haber cambiado recientemente
@@ -132,14 +135,27 @@ Estas reglas son ABSOLUTAS y no tienen excepciones:
       msg => typeof msg.content === 'string' && msg.content.trim() !== '',
     );
 
-    // Limitar a últimos 10 mensajes para evitar contexto contaminado
+    // Limitar a últimos 20 mensajes para evitar contexto contaminado
     if (history.length > 20) {
       history = history.slice(-20);
     }
 
-    // Construir mensajes: sistema + historial + pregunta actual
+    // NUEVO — detectar y guardar datos del usuario antes de procesar
+    const extractedData = await this.extractUserData(userMessage);
+    await this.updateUserContext(chatId, extractedData);
+
+    // NUEVO — obtener contexto del usuario y construir SystemMessage enriquecido
+    const rawContext = await this.getUserContext(chatId);
+    const userContext = rawContext ? JSON.parse(rawContext) : {};
+    const contextText = this.formatContext(userContext);
+
+    const systemContent = contextText
+      ? `${this.SYSTEM_PROMPT}\n\n# CONTEXTO DEL USUARIO\n${contextText}`
+      : this.SYSTEM_PROMPT;
+
+    // Construir mensajes: sistema enriquecido + historial + pregunta actual
     const messages: BaseMessage[] = [
-      new SystemMessage(this.SYSTEM_PROMPT),
+      new SystemMessage(systemContent),
       ...history,
       new HumanMessage(userMessage),
     ];
@@ -178,13 +194,11 @@ Estas reglas son ABSOLUTAS y no tienen excepciones:
         );
 
         // Inyectar resultados directamente en el SystemMessage
-        // evita que el modelo ignore los ToolMessages
         const toolResultsSummary = toolMessages
           .map(tm => `- ${String(tm.content)}`)
           .join('\n');
 
         // Segunda llamada — SIN historial, SIN tools
-        // Solo formula respuesta con los resultados obtenidos
         const finalResponse = await this.model.invoke([
           new SystemMessage(`
 Eres un asistente útil. Responde siempre en español de forma concisa.
@@ -247,9 +261,93 @@ INSTRUCCIONES:
     }
   }
 
-  // Método para limpiar el historial de un chat específico
+  // Limpia solo el historial — conserva contexto del usuario
   async clearHistory(chatId: number): Promise<void> {
     const chatHistory = this.getHistory(chatId);
     await chatHistory.clear();
   }
+
+  // Limpia todo — historial + contexto del usuario
+  async clearAll(chatId: number): Promise<void> {
+    const chatHistory = this.getHistory(chatId);
+    await chatHistory.clear();
+    await this.redisClient.del(`context:${chatId}`);
+  }
+
+// Obtiene el contexto guardado del usuario desde Redis
+private async getUserContext(chatId: number): Promise<string> {
+  try {
+    const context = await this.redisClient.get(`context:${chatId}`);
+    return context || '';
+  } catch {
+    return '';
+  }
 }
+
+// Extrae datos del usuario usando IA — más flexible que regex
+private async extractUserData(
+  message: string,
+): Promise<Record<string, string>> {
+  try {
+    const response = await this.model.invoke([
+      new SystemMessage(`
+Extrae datos personales del usuario si están explícitos en el mensaje.
+Responde SOLO un JSON válido sin explicaciones ni markdown.
+Campos posibles: nombre, rol, tecnologias, ubicacion.
+Si no hay dato claro para un campo, no lo incluyas.
+Si el mensaje no contiene datos personales responde: {}
+Ejemplos:
+  "hola me llamo Daniel y soy dev backend" → {"nombre":"Daniel","rol":"desarrollador backend"}
+  "que hora es en japón" → {}
+  "soy médico y vivo en Bogotá" → {"rol":"médico","ubicacion":"Bogotá"}
+      `.trim()),
+      new HumanMessage(message),
+    ]);
+
+    const content = response.content as string;
+    const cleaned = content.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        ([, v]) => typeof v === 'string' && v.trim() !== '',
+      ),
+    ) as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+// Actualiza el contexto del usuario en Redis — mergea con datos existentes
+private async updateUserContext(
+  chatId: number,
+  newData: Record<string, string>,
+): Promise<void> {
+  if (Object.keys(newData).length === 0) return;
+  try {
+    const existing = await this.redisClient.get(`context:${chatId}`);
+    const currentContext = existing ? JSON.parse(existing) : {};
+    const updatedContext = { ...currentContext, ...newData };
+    await this.redisClient.set(
+      `context:${chatId}`,
+      JSON.stringify(updatedContext),
+    );
+  } catch (error) {
+    console.error('Error actualizando contexto:', error.message);
+  }
+}
+
+// Formatea el contexto como texto legible para inyectar en el SystemMessage
+private formatContext(context: Record<string, string>): string {
+  if (Object.keys(context).length === 0) return '';
+  const lines: string[] = [];
+  if (context.nombre) lines.push(`- Nombre: ${context.nombre}`);
+  if (context.rol) lines.push(`- Rol: ${context.rol}`);
+  if (context.tecnologias) lines.push(`- Tecnologías: ${context.tecnologias}`);
+  if (context.ubicacion) lines.push(`- Ubicación: ${context.ubicacion}`);
+  return lines.join('\n');
+}
+
+
+}
+

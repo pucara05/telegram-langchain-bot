@@ -4,48 +4,51 @@ import { z } from 'zod';
 
 export const createSearchWebTool = (apiKey: string) =>
   tool(
-    async ({ query, type }) => {
+    async ({ query, type, context }) => {
       try {
-        // Para news NO agregar fecha — Serper ya filtra por reciente
-        // Para search de cargos políticos agregar año actual
-        const currentYear = new Date().getFullYear();
-        const enrichedQuery = type === 'search' &&
-          (query.toLowerCase().includes('presidente') ||
-           query.toLowerCase().includes('ministro') ||
-           query.toLowerCase().includes('director') ||
-           query.toLowerCase().includes('quien es'))
-          ? `${query} ${currentYear}`
-          : query;
+        // Helper para ejecutar búsqueda
+        const search = async (q: string, useNews = false): Promise<string> => {
+          const searcher = new Serper(apiKey, {
+            hl: 'es',
+            ...(useNews && { type: 'news' }),
+          });
+          return (await searcher._call(q)) || '';
+        };
 
-        const search = new Serper(apiKey, {
-          hl: 'es',
-          ...(type === 'news' && { type: 'news' }),
-        });
+        const isValid = (result: string): boolean =>
+          result.length >= 20 &&
+          !result.includes('No good search result');
 
-        console.log(`Serper [${type}] query:`, enrichedQuery);
-        const result = await search._call(enrichedQuery);
+        // Intento 1 — query tal como el modelo la generó
+        console.log(`Serper [intento 1] query:`, query);
+        const result1 = await search(query, type === 'news');
 
-        // Fallback si resultado es muy corto o vacío
-        if (!result || result.length < 20 || result.includes('No good search result')) {
-          console.log('Resultado insuficiente, reintentando con query refinada...');
-          const retrySearch = new Serper(apiKey, { hl: 'es' });
-          const retryQuery = type === 'news'
-            ? `${query} últimas noticias`
-            : `${query} ${currentYear}`;
-          const retryResult = await retrySearch._call(retryQuery);
-
-          if (!retryResult || retryResult.length < 20) {
-            return `No encontré información actualizada sobre "${query}".`;
-          }
-
-          console.log('Serper retry result:', retryResult);
-          // Formatear resultado para que el modelo lo entienda mejor
-          return `Información encontrada sobre "${query}":\n${retryResult}`;
+        if (isValid(result1)) {
+          console.log('Serper result:', result1);
+          return `Información sobre "${query}":\n${result1}`;
         }
 
-        console.log('Serper result:', result);
-        // Formatear resultado para que el modelo lo entienda mejor
-        return `Información encontrada sobre "${query}":\n${result}`;
+        // Intento 2 — agregar contexto adicional si el modelo lo proveyó
+        const query2 = context ? `${query} ${context}` : `${query} ${new Date().getFullYear()}`;
+        console.log(`Serper [intento 2] query:`, query2);
+        const result2 = await search(query2);
+
+        if (isValid(result2)) {
+          console.log('Serper result:', result2);
+          return `Información sobre "${query}":\n${result2}`;
+        }
+
+        // Intento 3 — query simplificada
+        const query3 = query.split(' ').slice(0, 4).join(' ');
+        console.log(`Serper [intento 3] query:`, query3);
+        const result3 = await search(query3, true);
+
+        if (isValid(result3)) {
+          console.log('Serper result:', result3);
+          return `Información sobre "${query}":\n${result3}`;
+        }
+
+        return `No encontré información sobre "${query}". Intenta ser más específico.`;
 
       } catch {
         return `No pude buscar "${query}" en este momento.`;
@@ -54,16 +57,18 @@ export const createSearchWebTool = (apiKey: string) =>
     {
       name: 'searchWeb',
       description:
-        'Busca información actualizada en internet usando Google. ' +
-        'Úsala para: noticias recientes, eventos actuales, precios, ' +
-        'cargos políticos actuales como presidentes ministros o directores, ' +
-        'deportes, tecnología, personas públicas, ' +
+        'Busca información actualizada en internet sobre CUALQUIER tema: ' +
+        'noticias, economía, política, medicina, tecnología, ciencia, ' +
+        'deportes, cultura, precios, personas, empresas, países, ' +
         'o cualquier información que pueda haber cambiado recientemente. ' +
         'NO usar para clima ni hora — esas tienen herramientas dedicadas. ' +
+        'En el campo "query" escribe la búsqueda más específica posible. ' +
+        'En el campo "context" agrega contexto extra si es necesario (país, año, idioma). ' +
         'Usa type="news" para noticias recientes, type="search" para todo lo demás.',
       schema: z.object({
         query: z.string(),
         type: z.enum(['search', 'news']).default('search'),
+        context: z.string().optional(),
       }),
     },
   );

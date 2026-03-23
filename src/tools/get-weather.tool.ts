@@ -54,15 +54,14 @@ export const createGetWeatherTool = (apiKey: string) =>
       }
     },
     {
-      name: 'getWeather',
-      description:
-        'Obtiene el clima actual de cualquier ciudad del mundo. ' +
-        'Úsala cuando el usuario pregunte por el clima, temperatura, ' +
-        'lluvia, o condiciones meteorológicas de algún lugar.',
-      schema: z.object({
-        city: z
-          .string()
-          .describe('El nombre de la ciudad. Ejemplo: Cucuta, Bogota, Madrid'),
-      }),
-    },
+  name: 'getWeather',
+  description:
+    'Obtiene el clima actual de cualquier ciudad o país del mundo. ' +
+    'Úsala SIEMPRE cuando pregunten por clima, temperatura, lluvia, ' +
+    'viento o condiciones meteorológicas de cualquier lugar. ' +
+    'También úsala cuando el usuario diga "Y en X" después de preguntar el clima de otro lugar.',
+  schema: z.object({
+    city: z.string(),
+  }),
+}
   );

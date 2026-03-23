@@ -20,7 +20,6 @@
 </p>
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
 # 🤖 Telegram LangChain Bot
 
 Bot inteligente para grupos de Telegram construido con **NestJS** y **LangChain**. Responde mensajes usando IA con memoria conversacional persistente y herramientas en tiempo real.
@@ -28,17 +27,17 @@ Bot inteligente para grupos de Telegram construido con **NestJS** y **LangChain*
 ## 🚀 Características
 
 - Recibe mensajes de grupos de Telegram en tiempo real via webhook
-- Responde usando IA con memoria conversacional persistente por chat
+- Responde usando IA (Google Gemini) con memoria conversacional persistente por chat
 - Herramientas en tiempo real: hora, clima y búsqueda web
 - Arquitectura modular con NestJS
 - Validación de variables de entorno al arrancar
-- Comando `/reset` para limpiar el historial
+- Comandos `/reset` y `/resetall` para gestionar el historial
 
 ## 🛠️ Stack Tecnológico
 
 - **Runtime:** Node.js
 - **Framework:** NestJS
-- **IA:** LangChain + Mistral (mistral-large-latest)
+- **IA:** LangChain + Google Gemini (gemini-2.5-flash-lite)
 - **Memoria:** Redis (Docker)
 - **Herramientas:** OpenWeatherMap, Serper (Google Search)
 - **Tunnel:** ngrok (desarrollo local)
@@ -46,11 +45,11 @@ Bot inteligente para grupos de Telegram construido con **NestJS** y **LangChain*
 
 ## 🔄 Cambiar de proveedor de IA
 
-LangChain permite cambiar el modelo con mínimas modificaciones. Actualmente usa **Mistral** pero puedes cambiarlo fácilmente:
+LangChain permite cambiar el modelo con mínimas modificaciones. Actualmente usa Gemini pero puedes cambiarlo fácilmente:
 ```typescript
-// Mistral (actual)
-import { ChatMistralAI } from '@langchain/mistralai';
-const model = new ChatMistralAI({ model: 'mistral-large-latest' });
+// Gemini (actual)
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+const model = new ChatGoogleGenerativeAI({ model: 'gemini-2.5-flash-lite' });
 
 // Groq + Llama (alternativa gratis, más rápida)
 import { ChatGroq } from '@langchain/groq';
@@ -69,7 +68,7 @@ Solo cambia el import y la instancia en `src/ai/ai.service.ts` — el resto del 
 - pnpm
 - Docker y Docker Compose
 - Token de bot de [@BotFather](https://t.me/botfather)
-- API Key de [Mistral AI](https://console.mistral.ai) (gratis, sin tarjeta)
+- API Key de [Google AI Studio](https://aistudio.google.com) (gratis)
 - API Key de [OpenWeatherMap](https://openweathermap.org/api) (gratis)
 - API Key de [Serper](https://serper.dev) (gratis, 2500 búsquedas/mes)
 - [ngrok](https://ngrok.com)
@@ -101,16 +100,13 @@ docker-compose up -d
 
 ## 🔐 Variables de Entorno
 ```env
-TELEGRAM_BOT_TOKEN=      # Token de @BotFather
-MISTRAL_API_KEY=         # API Key de Mistral AI
-OPENWEATHER_API_KEY=     # API Key de OpenWeatherMap
-SERPER_API_KEY=          # API Key de Serper
-NGROK_URL=               # URL de ngrok (desarrollo)
+TELEGRAM_BOT_TOKEN=        # Token de @BotFather
+GEMINI_API_KEY=            # API Key de Google AI Studio
+OPENWEATHER_API_KEY=       # API Key de OpenWeatherMap
+SERPER_API_KEY=            # API Key de Serper
+NGROK_URL=                 # URL de ngrok (desarrollo)
 PORT=3000
 REDIS_URL=redis://localhost:6379
-
-# Opcional — si quieres usar Groq en lugar de Mistral
-# GROQ_API_KEY=          # API Key de Groq
 ```
 
 ## 🚀 Uso en Desarrollo
@@ -122,25 +118,24 @@ docker-compose up -d
 
 2. Inicia ngrok
 ```bash
-ngrok http 3000
+ngrok http --domain=tu-dominio.ngrok-free.app 3000
 ```
 
-3. Copia la URL y pégala en `NGROK_URL` del `.env`
-
-4. Inicia el servidor
+3. Inicia el servidor
 ```bash
 pnpm run start:dev
 ```
 
-5. Agrega el bot al grupo de Telegram como administrador
+4. Agrega el bot al grupo de Telegram como administrador
 
-6. Escribe cualquier mensaje — el bot responderá con IA
+5. Escribe cualquier mensaje — el bot responderá con IA
 
 ## 💬 Comandos disponibles
 
 | Comando | Descripción |
 |---------|-------------|
-| `/reset` | Limpia el historial de conversación del chat |
+| `/reset` | Limpia el historial del chat actual |
+| `/resetall` | Limpia el historial de todos los chats |
 
 ## 🛠️ Herramientas disponibles
 
@@ -161,7 +156,7 @@ src/
 │   └── search-web.tool.ts             # Tool: búsqueda web con Serper
 ├── ai/
 │   ├── ai.module.ts
-│   └── ai.service.ts                  # LangChain + Mistral + Redis memory
+│   └── ai.service.ts                  # LangChain + Gemini + Redis memory
 └── telegram/
     ├── dto/
     │   └── telegram-update.dto.ts     # Tipado del payload de Telegram
@@ -196,7 +191,6 @@ Usuario recibe respuesta
 ## 📄 Licencia
 
 MIT
-
 ## Resources
 
 Check out a few resources that may come in handy when working with NestJS:

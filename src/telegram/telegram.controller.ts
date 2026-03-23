@@ -28,10 +28,22 @@ export class TelegramController {
             hour12: true,
         });
 
-        // Comando /reset → limpia el historial
+        // Comandos para limpiar historial
         if (userMessage === '/reset') {
-            await this.aiService.clearHistory(chatId); // ← agregar await
-            await this.telegramService.sendMessage(chatId, '🧹 Historial limpiado. ¡Empecemos de nuevo!');
+            await this.aiService.clearHistory(chatId);
+            await this.telegramService.sendMessage(
+                chatId,
+                '🧹 Historial limpiado. El bot recuerda quién eres pero olvidó la conversación reciente.',
+            );
+            return;
+        }
+
+        if (userMessage === '/resetall') {
+            await this.aiService.clearAll(chatId);
+            await this.telegramService.sendMessage(
+                chatId,
+                '🗑️ Todo limpiado. El bot olvidó completamente quién eres y la conversación.',
+            );
             return;
         }
 
