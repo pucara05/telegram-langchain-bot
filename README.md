@@ -20,175 +20,216 @@
 </p>
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-# 🤖 Telegram LangChain Bot
+# 🤖 AI Agent Telegram (RAG + Tools + Memory + Backend API)
 
-Bot inteligente para grupos de Telegram construido con **NestJS** y **LangChain**. Responde mensajes usando IA con memoria conversacional persistente y herramientas en tiempo real.
+Agente inteligente para Telegram diseñado para **uso empresarial**, capaz de responder consultas internas, acceder a APIs del negocio y utilizar conocimiento propio mediante RAG.
+
+---
+
+## 🧠 ¿Qué es este proyecto?
+
+Un **AI Agent privado para empresas**, que permite a equipos internos consultar:
+
+- 📊 información de usuarios
+- 💳 estados de pagos
+- 🎫 tickets y eventos
+- 📚 documentación interna (RAG)
+
+Todo desde Telegram, en lenguaje natural.
+
+---
 
 ## 🚀 Características
 
-- Recibe mensajes de grupos de Telegram en tiempo real via webhook
-- Responde usando IA (Google Gemini) con memoria conversacional persistente por chat
-- Herramientas en tiempo real: hora, clima y búsqueda web
-- Arquitectura modular con NestJS
-- Validación de variables de entorno al arrancar
-- Comandos `/reset` y `/resetall` para gestionar el historial
+- 📩 Webhook en tiempo real con Telegram
+- 🧠 LLM (Mistral) para razonamiento
+- 💾 Memoria persistente por usuario (Redis)
+- 🔧 Tools dinámicas:
+  - Hora
+  - Clima
+  - Búsqueda web
+- 🔌 **Integración con backend empresarial (API real)**
+- 📚 **RAG (Retrieval-Augmented Generation)**
+  - Embeddings locales (Transformers)
+  - Vector DB (Chroma persistente)
+- ⚡ Arquitectura modular con NestJS
+- 🔐 Validación de entorno
+- 🧹 Comandos de control de memoria
 
-## 🛠️ Stack Tecnológico
+---
 
-- **Runtime:** Node.js
-- **Framework:** NestJS
-- **IA:** LangChain + Google Gemini (gemini-2.5-flash-lite)
-- **Memoria:** Redis (Docker)
-- **Herramientas:** OpenWeatherMap, Serper (Google Search)
-- **Tunnel:** ngrok (desarrollo local)
-- **Package Manager:** pnpm
+## 🧬 Stack Tecnológico
 
-## 🔄 Cambiar de proveedor de IA
+| Capa | Tecnología |
+|------|--------|
+| Backend | NestJS |
+| Runtime | Node.js |
+| LLM | Mistral (LangChain) |
+| Embeddings | Transformers (`@xenova/transformers`) |
+| Vector DB | Chroma |
+| Memoria | Redis (Docker) |
+| API externa | Backend empresarial (Axios) |
+| Tools | OpenWeather + Serper |
+| Dev Tunnel | ngrok |
+| Package Manager | pnpm |
 
-LangChain permite cambiar el modelo con mínimas modificaciones. Actualmente usa Gemini pero puedes cambiarlo fácilmente:
-```typescript
-// Gemini (actual)
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-const model = new ChatGoogleGenerativeAI({ model: 'gemini-2.5-flash-lite' });
+---
 
-// Groq + Llama (alternativa gratis, más rápida)
-import { ChatGroq } from '@langchain/groq';
-const model = new ChatGroq({ model: 'llama-3.3-70b-versatile' });
+## 🧠 Arquitectura del Agente
 
-// OpenAI (más estable, de pago)
-import { ChatOpenAI } from '@langchain/openai';
-const model = new ChatOpenAI({ model: 'gpt-4o' });
-```
+```txt
+Usuario (Empresa)
+        ↓
+Telegram
+        ↓
+NestJS Webhook
+        ↓
+AI Service
+        ↓
+┌────────────────────────────┐
+│        LLM (Mistral)       │
+└────────────┬───────────────┘
+             ↓
+   ┌───────────────────────┐
+   │     Decision Layer    │
+   └───────────────────────┘
+     ↓        ↓        ↓
+   RAG      Tools    API Backend
+     ↓        ↓        ↓
+   Chroma   APIs    Sistema Empresa
+     ↓
+Redis Memory
+📚 RAG (Conocimiento interno)
 
-Solo cambia el import y la instancia en `src/ai/ai.service.ts` — el resto del código no cambia.
+El sistema utiliza archivos .md como base de conocimiento:
 
-## 📋 Prerrequisitos
+AGENT_API.md
+🔄 Flujo:
+Se carga el documento
+Se divide en chunks
+Se generan embeddings (Transformers local)
+Se almacenan en Chroma
+Se recupera contexto relevante en cada consulta
 
-- Node.js >= 18
-- pnpm
-- Docker y Docker Compose
-- Token de bot de [@BotFather](https://t.me/botfather)
-- API Key de [Google AI Studio](https://aistudio.google.com) (gratis)
-- API Key de [OpenWeatherMap](https://openweathermap.org/api) (gratis)
-- API Key de [Serper](https://serper.dev) (gratis, 2500 búsquedas/mes)
-- [ngrok](https://ngrok.com)
+👉 Sin costo
+👉 Sin APIs externas
+👉 Persistente
 
-## ⚙️ Instalación
+🔌 Tool empresarial (Backend API)
+get_agent_context(identifier)
+📥 Input:
+email
+ticketCode
+paymentId
+📤 Retorna:
+información del usuario
+estado de pagos
+tickets
+eventos
+🔐 Seguridad:
+Autenticación vía API Key
+Integración backend real
+🤖 Inteligencia del agente
 
-1. Clona el repositorio
-```bash
+El agente decide automáticamente:
+
+Caso	Acción
+Pregunta interna	usa RAG
+Pregunta de usuario real	usa API
+Pregunta general	usa LLM
+Datos externos	usa tools
+🐳 Infraestructura (Docker)
+services:
+  redis:
+    image: redis:alpine
+
+  chroma:
+    image: chromadb/chroma
+
+👉 Persistencia incluida
+👉 Listo para producción
+
+⚙️ Instalación
 git clone https://github.com/pucara05/telegram-langchain-bot.git
 cd telegram-langchain-bot
-```
-
-2. Instala las dependencias
-```bash
 pnpm install
-```
+🔐 Variables de entorno
+TELEGRAM_BOT_TOKEN=
 
-3. Configura las variables de entorno
-```bash
-cp .env.example .env
-```
+MISTRAL_API_KEY=
 
-4. Edita el `.env` con tus credenciales
+OPENWEATHER_API_KEY=
+SERPER_API_KEY=
 
-5. Levanta Redis
-```bash
-docker-compose up -d
-```
+AGENT_API_URL=
+AGENT_API_KEY=
 
-## 🔐 Variables de Entorno
-```env
-TELEGRAM_BOT_TOKEN=        # Token de @BotFather
-GEMINI_API_KEY=            # API Key de Google AI Studio
-OPENWEATHER_API_KEY=       # API Key de OpenWeatherMap
-SERPER_API_KEY=            # API Key de Serper
-NGROK_URL=                 # URL de ngrok (desarrollo)
-PORT=3000
 REDIS_URL=redis://localhost:6379
-```
+CHROMA_URL=http://localhost:8000
 
-## 🚀 Uso en Desarrollo
-
-1. Levanta Redis
-```bash
+NGROK_URL=
+PORT=3000
+🚀 Desarrollo
 docker-compose up -d
-```
-
-2. Inicia ngrok
-```bash
-ngrok http --domain=tu-dominio.ngrok-free.app 3000
-```
-
-3. Inicia el servidor
-```bash
 pnpm run start:dev
-```
+ngrok http 3000
 
-4. Agrega el bot al grupo de Telegram como administrador
+Registrar webhook:
 
-5. Escribe cualquier mensaje — el bot responderá con IA
-
-## 💬 Comandos disponibles
-
-| Comando | Descripción |
-|---------|-------------|
-| `/reset` | Limpia el historial del chat actual |
-| `/resetall` | Limpia el historial de todos los chats |
-
-## 🛠️ Herramientas disponibles
-
-| Herramienta | Descripción | API |
-|-------------|-------------|-----|
-| `getTime` | Hora actual en cualquier zona horaria | Sin API (reloj del servidor) |
-| `getWeather` | Clima actual de cualquier ciudad | OpenWeatherMap |
-| `searchWeb` | Búsqueda web en tiempo real | Serper (Google Search) |
-
-## 🏗️ Arquitectura
-```
+curl -X POST https://api.telegram.org/bot<TOKEN>/setWebhook \
+-d "url=<NGROK_URL>/telegram/webhook"
+💬 Ejemplos de uso
+📊 Backend real
+"Busca el usuario con email Yennyarb32@gmail.com
+"
+"Cuál es el estado del pago 151312334101"
+📚 RAG
+"Explícame el endpoint de tickets"
+"Cómo funciona la API de pagos"
+🌐 Tools
+"Qué clima hay en Bogotá"
+"Qué hora es en Madrid"
+🧠 Flujo completo
+Usuario → Telegram
+        ↓
+Webhook
+        ↓
+AI Service
+        ↓
+¿RAG?
+¿Tool?
+¿API?
+        ↓
+LLM genera respuesta
+        ↓
+Redis guarda memoria
+        ↓
+Telegram responde
+⚡ Optimización
+✅ Embeddings locales (gratis)
+✅ Persistencia en Chroma
+✅ No recalcula embeddings
+✅ Uso inteligente de RAG
+✅ Tools bajo demanda
+🏗️ Estructura
 src/
-├── config/
-│   └── env.validation.ts              # Validación de variables de entorno
-├── tools/
-│   ├── get-time.tool.ts               # Tool: hora actual por zona horaria
-│   ├── get-weather.tool.ts            # Tool: clima por ciudad
-│   └── search-web.tool.ts             # Tool: búsqueda web con Serper
 ├── ai/
-│   ├── ai.module.ts
-│   └── ai.service.ts                  # LangChain + Gemini + Redis memory
-└── telegram/
-    ├── dto/
-    │   └── telegram-update.dto.ts     # Tipado del payload de Telegram
-    ├── telegram.controller.ts         # Recibe webhooks
-    ├── telegram.module.ts
-    └── telegram.service.ts            # Envía mensajes a Telegram
-```
+├── rag/
+│   ├── documents/
+│   └── rag.service.ts
+├── tools/
+├── telegram/
+├── config/
+🎯 Caso de uso real
 
-## 🔄 Flujo de mensajes
-```
-Usuario escribe en Telegram
-        ↓
-TelegramController recibe webhook
-        ↓
-AiService obtiene historial de Redis
-        ↓
-LangChain decide si usar tools
-        ↓
-¿Necesita tool?
-   ├── SÍ → ejecuta tool (getTime/getWeather/searchWeb)
-   │         ↓
-   │    modelo formula respuesta con resultado
-   └── NO → modelo responde directamente
-        ↓
-AiService guarda intercambio en Redis
-        ↓
-TelegramService envía respuesta
-        ↓
-Usuario recibe respuesta
-```
+Este agente está diseñado para:
 
-## 📄 Licencia
+🏢 Equipos internos de empresas
+🎫 Soporte operativo
+💳 Consulta de pagos
+📊 Acceso a datos sin dashboards
+🤖 Asistente interno inteligente
+📄 Licencia
 
 MIT
 ## Resources
