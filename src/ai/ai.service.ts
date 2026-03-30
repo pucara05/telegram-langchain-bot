@@ -1,8 +1,8 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 //import { ChatGroq } from '@langchain/groq';
-//import { ChatMistralAI } from '@langchain/mistralai';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { ChatMistralAI } from '@langchain/mistralai';
+//import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import {
   HumanMessage,
   SystemMessage,
@@ -14,75 +14,182 @@ import Redis from 'ioredis';
 import { getTimeTool } from '../tools/get-time.tool';
 import { createGetWeatherTool } from '../tools/get-weather.tool';
 import { createSearchWebTool } from '../tools/search-web.tool';
+import { getAgentContextTool } from 'src/tools/getAgentContext';
+import { RagService } from '../rag/rag.service';
+import { Logger } from '@nestjs/common';
 
 
 @Injectable()
 export class AiService implements OnModuleDestroy {
-  private model: ChatGoogleGenerativeAI;
+  private readonly logger = new Logger(AiService.name);
+  private model: ChatMistralAI;
   private modelWithTools: any;
   private redisClient: Redis;
   private tools: any[];
 
   private readonly SYSTEM_PROMPT =
-    `
+    ` 
 # ROL
 Eres un asistente inteligente en un grupo de Telegram.
-Responde SIEMPRE en español y de forma concisa y clara.
-Tu fecha de conocimiento tiene un límite — para cualquier información que pueda haber cambiado, usa las herramientas disponibles.
+Responde SIEMPRE en español y de forma concisa, clara y útil.
+Eres un asistente técnico interno para desarrolladores.
+
+Tu conocimiento puede estar desactualizado, por lo tanto:
+→ SIEMPRE usa herramientas cuando la información dependa de datos reales o actualizados.
 
 # HERRAMIENTAS DISPONIBLES
-Tienes 3 herramientas para obtener información en tiempo real:
+Tienes 4 herramientas para obtener información en tiempo real:
 
 ## getTime
-- Úsala cuando pregunten por la hora o fecha actual en cualquier lugar del mundo
-- Ejemplos: "¿qué hora es en Japón?", "¿qué día es hoy en Australia?"
+- Úsala cuando pregunten por la hora o fecha actual
+- Ejemplos: "¿qué hora es en Japón?"
 
 ## getWeather
-## getWeather
-- Úsala cuando pregunten por el clima, temperatura, lluvia o condiciones meteorológicas
-- Ejemplos: "¿cómo está el clima en Cúcuta?", "¿está lloviendo en Madrid?", "¿qué temperatura hace en Australia?"
-- IMPORTANTE: Si el usuario dice "Y en X" después de preguntar clima → llama getWeather para X también
-- NUNCA respondas el clima desde tu conocimiento — siempre llama esta tool
+- Úsala cuando pregunten por clima o temperatura
+- Ejemplos: "¿cómo está el clima en Cúcuta?"
+- IMPORTANTE:
+  - Si el usuario dice "Y en X" → vuelve a usar la tool
+  - NUNCA respondas clima sin usar esta tool
 
 ## searchWeb
-- Úsala para cualquier información que pueda haber cambiado recientemente
-- Casos de uso OBLIGATORIOS:
-  * Cargos políticos: presidentes, ministros, reyes, primeros ministros de CUALQUIER país del mundo — incluyendo Estados Unidos, Colombia, Venezuela, España o cualquier otro
-  * ADVERTENCIA: Los gobiernos cambian frecuentemente. Tu conocimiento de entrenamiento sobre cargos políticos puede estar desactualizado. SIEMPRE busca antes de responder
-  * Precios: dólar, bitcoin, acciones, commodities
-  * Noticias y eventos recientes
-  * Resultados deportivos y ganadores de competencias
-  * Cualquier hecho que pueda haber cambiado en los últimos años
+- Úsala para información que puede cambiar:
+  - política
+  - precios
+  - noticias
+  - resultados deportivos
 
-# REGLAS ANTI-ALUCINACIÓN (CRÍTICAS)
-Estas reglas son ABSOLUTAS y no tienen excepciones:
+- SIEMPRE usar para:
+  - presidentes o cargos políticos
+  - dólar, bitcoin, acciones
+  - noticias recientes
 
-1. HORA → usa getTime SIEMPRE. NUNCA inventes ni estimes la hora
-2. CLIMA → usa getWeather SIEMPRE. NUNCA inventes condiciones meteorológicas
-3. CARGOS POLÍTICOS → usa searchWeb SIEMPRE antes de responder. NUNCA uses tu conocimiento de entrenamiento para responder quién ocupa un cargo — tu información puede estar desactualizada
-4. PRECIOS → usa searchWeb SIEMPRE. NUNCA inventes precios de divisas, criptomonedas o acciones
-5. RESULTADOS DEPORTIVOS → usa searchWeb SIEMPRE. NUNCA inventes ganadores de mundiales, olimpiadas o competencias
-6. NOTICIAS → usa searchWeb SIEMPRE. NUNCA inventes eventos recientes
-7. HISTORIAL → NUNCA uses el historial para responder preguntas de hora, clima o precios. Llama la tool de nuevo para datos frescos
+## getAgentContext
+- Úsala para información INTERNA del sistema:
+  - pagos
+  - tickets
+  - boletas
+  - usuarios
+  - eventos
+  - estado de transacciones
+
+- Ejemplos:
+  - "revisa el pago de juan@gmail.com"
+  - "qué tickets tiene este usuario?"
+  - "hay errores en este usuario?"
+
+- INPUT esperado:
+  - email
+  - ticketCode
+  - paymentId
+
+- IMPORTANTE:
+  - SIEMPRE usar esta tool para datos del sistema
+  - NUNCA inventar datos internos
+
+  ## RAG (CONTEXTO INTERNO)
+- Usa el CONTEXTO INTERNO (RAG) SOLO cuando la pregunta sea sobre:
+  - APIs internas
+  - endpoints
+  - documentación técnica
+  - funcionamiento del sistema
+
+- NO uses RAG para:
+  - clima
+  - hora
+  - datos en tiempo real
+
+- Si RAG no tiene suficiente info → usa tools o responde normalmente
+
+# REGLAS DE DECISIÓN DE TOOLS (CRÍTICAS)
+
+1. Si la pregunta requiere datos en tiempo real → usa tool
+2. Si la pregunta es sobre el sistema interno → usa getAgentContext
+3. Si tienes duda → usa la tool en lugar de responder
+4. NUNCA respondas con suposiciones si existe una tool adecuada
+5. Prioridad de tools:
+   - Sistema interno → getAgentContext
+   - Tiempo → getTime
+   - Clima → getWeather
+   - Información externa → searchWeb
+
+# REGLAS ANTI-ALUCINACIÓN (OBLIGATORIAS)
+
+1. HORA → usar getTime SIEMPRE
+2. CLIMA → usar getWeather SIEMPRE
+3. POLÍTICA → usar searchWeb SIEMPRE
+4. PRECIOS → usar searchWeb SIEMPRE
+5. NOTICIAS → usar searchWeb SIEMPRE
+6. SISTEMA (pagos, tickets, boletas) → usar getAgentContext SIEMPRE
+7. NUNCA inventar datos
+8. Si no tienes datos → usa tool o pide más información
+
+# MANEJO DE DATOS DEL SISTEMA
+
+Cuando uses getAgentContext:
+
+1. Analiza primero:
+   - alerts (si existen)
+
+2. Luego:
+   - payments
+   - tickets
+
+3. Si hay errores:
+   - explica claramente el problema
+   - sugiere acciones
+
+4. Si todo está bien:
+   - confirma estado claramente
+
+# MANEJO DE INPUT
+
+- Si el usuario no proporciona:
+  - email
+  - ticketCode
+  - paymentId
+
+→ debes pedirlo antes de usar la tool
 
 # CUÁNDO NO USAR TOOLS
-- Saludos y conversación general → responde directamente
-- Preguntas de conocimiento general estable → responde directamente
-- Explicaciones técnicas o conceptuales → responde directamente
+
+- Saludos → responder directo
+- Conversación casual → responder directo
+- Explicaciones técnicas → responder directo
 
 # REGLAS DE COMPORTAMIENTO
-- Si el usuario dice "Y en X" después de preguntar hora o clima → interpreta que sigue preguntando lo mismo para ese lugar y llama la tool de nuevo
-- Si una tool falla → informa al usuario de forma clara que no pudiste obtener esa información
-- Si no tienes una tool apropiada para algo → di honestamente que no tienes esa información
-- NUNCA respondas con texto vacío
+
+- Si el usuario dice "Y en X" → continuar contexto anterior
+- Si una tool falla → informar claramente
+- Nunca responder vacío
+- Sé claro, directo y útil
+- Prioriza precisión sobre rapidez
+
+# EJEMPLOS (IMPORTANTE PARA EL MODELO)
+
+Usuario: revisa el pago de juan@gmail.com  
+→ usar getAgentContext
+
+Usuario: qué tickets tiene este usuario  
+→ usar getAgentContext
+
+Usuario: hay errores en este usuario  
+→ usar getAgentContext
+
+Usuario: cuánto está el dólar  
+→ usar searchWeb
+
+Usuario: qué hora es en Colombia  
+→ usar getTime
 `.trim();
 
   private readonly TTL = 86400;
 
-  constructor(private config: ConfigService) {
-    this.model = new ChatGoogleGenerativeAI({
-      apiKey: this.config.get<string>('GEMINI_API_KEY'),
-      model: 'gemini-2.5-flash-lite',
+  constructor(private config: ConfigService,
+    private ragService: RagService //solo inyectamos el servicio RAG, no lo usamos directamente aquí
+  ) {
+    this.model = new ChatMistralAI({
+      apiKey: this.config.get<string>('MISTRAL_API_KEY'),
+      model: 'mistral-small-latest',
       temperature: 0,
     });
 
@@ -95,6 +202,7 @@ Estas reglas son ABSOLUTAS y no tienen excepciones:
       createSearchWebTool(
         this.config.get<string>('SERPER_API_KEY') as string,
       ),
+      getAgentContextTool,
     ];
 
     // Log para verificar
@@ -149,9 +257,37 @@ Estas reglas son ABSOLUTAS y no tienen excepciones:
     const userContext = rawContext ? JSON.parse(rawContext) : {};
     const contextText = this.formatContext(userContext);
 
-    const systemContent = contextText
-      ? `${this.SYSTEM_PROMPT}\n\n# CONTEXTO DEL USUARIO\n${contextText}`
-      : this.SYSTEM_PROMPT;
+    // 🔥 RAG — buscar contexto interno
+    let ragContext = '';
+
+    const msg = userMessage.toLowerCase();
+
+    const shouldUseRag =
+      msg.includes('agent') ||
+      msg.includes('api') ||
+      msg.includes('endpoint') ||
+      msg.includes('ticket') ||
+      msg.includes('payment');
+
+    // 🔥 SOLO usa RAG si vale la pena
+    if (shouldUseRag && userMessage.length > 10) {
+      try {
+        this.logger.log('🧠 Usando RAG...');
+        ragContext = await this.ragService.search(userMessage);
+      } catch (error) {
+        this.logger.warn('⚠️ RAG falló, continuando sin contexto');
+        ragContext = '';
+      }
+    }
+
+    // 🔥 construir system prompt enriquecido
+    const systemContent = `
+${this.SYSTEM_PROMPT}
+
+${contextText ? `# CONTEXTO DEL USUARIO\n${contextText}` : ''}
+
+${ragContext ? `# CONTEXTO INTERNO (RAG)\n${ragContext}` : ''}
+`.trim();
 
     // Construir mensajes: sistema enriquecido + historial + pregunta actual
     const messages: BaseMessage[] = [
@@ -274,23 +410,23 @@ INSTRUCCIONES:
     await this.redisClient.del(`context:${chatId}`);
   }
 
-// Obtiene el contexto guardado del usuario desde Redis
-private async getUserContext(chatId: number): Promise<string> {
-  try {
-    const context = await this.redisClient.get(`context:${chatId}`);
-    return context || '';
-  } catch {
-    return '';
+  // Obtiene el contexto guardado del usuario desde Redis
+  private async getUserContext(chatId: number): Promise<string> {
+    try {
+      const context = await this.redisClient.get(`context:${chatId}`);
+      return context || '';
+    } catch {
+      return '';
+    }
   }
-}
 
-// Extrae datos del usuario usando IA — más flexible que regex
-private async extractUserData(
-  message: string,
-): Promise<Record<string, string>> {
-  try {
-    const response = await this.model.invoke([
-      new SystemMessage(`
+  // Extrae datos del usuario usando IA — más flexible que regex
+  private async extractUserData(
+    message: string,
+  ): Promise<Record<string, string>> {
+    try {
+      const response = await this.model.invoke([
+        new SystemMessage(`
 Extrae datos personales del usuario si están explícitos en el mensaje.
 Responde SOLO un JSON válido sin explicaciones ni markdown.
 Campos posibles: nombre, rol, tecnologias, ubicacion.
@@ -301,52 +437,52 @@ Ejemplos:
   "que hora es en japón" → {}
   "soy médico y vivo en Bogotá" → {"rol":"médico","ubicacion":"Bogotá"}
       `.trim()),
-      new HumanMessage(message),
-    ]);
+        new HumanMessage(message),
+      ]);
 
-    const content = response.content as string;
-    const cleaned = content.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(cleaned);
+      const content = response.content as string;
+      const cleaned = content.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
 
-    return Object.fromEntries(
-      Object.entries(parsed).filter(
-        ([, v]) => typeof v === 'string' && v.trim() !== '',
-      ),
-    ) as Record<string, string>;
-  } catch {
-    return {};
+      return Object.fromEntries(
+        Object.entries(parsed).filter(
+          ([, v]) => typeof v === 'string' && v.trim() !== '',
+        ),
+      ) as Record<string, string>;
+    } catch {
+      return {};
+    }
   }
-}
 
-// Actualiza el contexto del usuario en Redis — mergea con datos existentes
-private async updateUserContext(
-  chatId: number,
-  newData: Record<string, string>,
-): Promise<void> {
-  if (Object.keys(newData).length === 0) return;
-  try {
-    const existing = await this.redisClient.get(`context:${chatId}`);
-    const currentContext = existing ? JSON.parse(existing) : {};
-    const updatedContext = { ...currentContext, ...newData };
-    await this.redisClient.set(
-      `context:${chatId}`,
-      JSON.stringify(updatedContext),
-    );
-  } catch (error) {
-    console.error('Error actualizando contexto:', error.message);
+  // Actualiza el contexto del usuario en Redis — mergea con datos existentes
+  private async updateUserContext(
+    chatId: number,
+    newData: Record<string, string>,
+  ): Promise<void> {
+    if (Object.keys(newData).length === 0) return;
+    try {
+      const existing = await this.redisClient.get(`context:${chatId}`);
+      const currentContext = existing ? JSON.parse(existing) : {};
+      const updatedContext = { ...currentContext, ...newData };
+      await this.redisClient.set(
+        `context:${chatId}`,
+        JSON.stringify(updatedContext),
+      );
+    } catch (error) {
+      console.error('Error actualizando contexto:', error.message);
+    }
   }
-}
 
-// Formatea el contexto como texto legible para inyectar en el SystemMessage
-private formatContext(context: Record<string, string>): string {
-  if (Object.keys(context).length === 0) return '';
-  const lines: string[] = [];
-  if (context.nombre) lines.push(`- Nombre: ${context.nombre}`);
-  if (context.rol) lines.push(`- Rol: ${context.rol}`);
-  if (context.tecnologias) lines.push(`- Tecnologías: ${context.tecnologias}`);
-  if (context.ubicacion) lines.push(`- Ubicación: ${context.ubicacion}`);
-  return lines.join('\n');
-}
+  // Formatea el contexto como texto legible para inyectar en el SystemMessage
+  private formatContext(context: Record<string, string>): string {
+    if (Object.keys(context).length === 0) return '';
+    const lines: string[] = [];
+    if (context.nombre) lines.push(`- Nombre: ${context.nombre}`);
+    if (context.rol) lines.push(`- Rol: ${context.rol}`);
+    if (context.tecnologias) lines.push(`- Tecnologías: ${context.tecnologias}`);
+    if (context.ubicacion) lines.push(`- Ubicación: ${context.ubicacion}`);
+    return lines.join('\n');
+  }
 
 
 }

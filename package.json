@@ -20,7 +20,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
-    "@langchain/community": "^1.1.24",
+    "@huggingface/inference": "^4.13.15",
+    "@langchain/community": "^1.1.25",
     "@langchain/core": "^1.1.32",
     "@langchain/google-genai": "^2.1.26",
     "@langchain/groq": "^1.1.2",
@@ -29,14 +30,18 @@
     "@nestjs/config": "^4.0.3",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@xenova/transformers": "^2.17.2",
     "axios": "^1.13.6",
+    "chromadb": "^3.4.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "ioredis": "^5.10.0",
     "joi": "^18.0.2",
-    "langchain": "^1.2.32",
+    "langchain": "^1.2.37",
+    "onnxruntime-node": "^1.24.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "sharp": "^0.34.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
