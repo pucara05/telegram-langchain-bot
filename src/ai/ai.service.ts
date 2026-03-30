@@ -263,24 +263,29 @@ Usuario: qué hora es en Colombia
     const msg = userMessage.toLowerCase();
 
     const shouldUseRag =
-      msg.includes('agent') ||
-      msg.includes('api') ||
-      msg.includes('endpoint') ||
-      msg.includes('ticket') ||
-      msg.includes('payment');
+      userMessage.length > 15 &&
+      !(
+        msg.includes('hora') ||
+        msg.includes('clima') ||
+        msg.includes('weather') ||
+        msg.includes('time')
+      );
 
-    // 🔥 SOLO usa RAG si vale la pena
-    if (shouldUseRag && userMessage.length > 10) {
+    if (shouldUseRag) {
       try {
         this.logger.log('🧠 Usando RAG...');
-        ragContext = await this.ragService.search(userMessage);
-      } catch (error) {
-        this.logger.warn('⚠️ RAG falló, continuando sin contexto');
-        ragContext = '';
+        const result = await this.ragService.search(userMessage);
+
+        if (result && result.length > 20) {
+          ragContext = result;
+          this.logger.log(`RAG context length: ${ragContext.length}`);
+        }
+      } catch {
+        this.logger.warn('⚠️ RAG falló');
       }
     }
 
-    // 🔥 construir system prompt enriquecido
+    //  construir system prompt enriquecido
     const systemContent = `
 ${this.SYSTEM_PROMPT}
 
@@ -339,6 +344,8 @@ ${ragContext ? `# CONTEXTO INTERNO (RAG)\n${ragContext}` : ''}
           new SystemMessage(`
 Eres un asistente útil. Responde siempre en español de forma concisa.
 
+${ragContext ? `CONTEXTO RAG:\n${ragContext}` : ''}
+
 INFORMACIÓN OBTENIDA DE LAS HERRAMIENTAS:
 ${toolResultsSummary}
 
@@ -348,7 +355,7 @@ INSTRUCCIONES:
 - PROHIBIDO recomendar fuentes externas si ya tienes la información
 - PROHIBIDO ignorar los datos proporcionados
 - Si la información es insuficiente dilo honestamente
-        `.trim()),
+  `.trim()),
           new HumanMessage(userMessage),
         ]);
 

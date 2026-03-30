@@ -9,5 +9,15 @@ services:
     command: redis-server --appendonly yes
     restart: unless-stopped
 
+  chroma:
+    image: chromadb/chroma
+    container_name: chroma-db
+    ports:
+      - '8000:8000'
+    volumes:
+      - chroma-data:/chroma/.chroma/index
+    restart: unless-stopped
+
 volumes:
   redis-data:
+  chroma-data:
