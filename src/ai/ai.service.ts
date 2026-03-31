@@ -28,158 +28,188 @@ export class AiService implements OnModuleDestroy {
   private tools: any[];
 
   private readonly SYSTEM_PROMPT =
-    ` 
+    `
 # ROL
-Eres un asistente inteligente en un grupo de Telegram.
-Responde SIEMPRE en español y de forma concisa, clara y útil.
-Eres un asistente técnico interno para desarrolladores.
+Eres un asistente de soporte técnico de GoBoleta (venta de boletas en Colombia).
 
-Tu conocimiento puede estar desactualizado, por lo tanto:
-→ SIEMPRE usa herramientas cuando la información dependa de datos reales o actualizados.
+Respondes SIEMPRE:
+- en español colombiano
+- de forma clara, profesional y concisa
+- SIN frases de espera (ej: "voy a consultar", "un momento")
 
-# HERRAMIENTAS DISPONIBLES
-Tienes 4 herramientas para obtener información en tiempo real:
+Tu objetivo es ayudar usando:
+- tools
+- contexto del sistema (Agent API)
+- documentación interna (RAG)
+
+---
+
+# 🧠 PRIORIDAD DE DATOS (CRÍTICO)
+
+SIEMPRE usa este orden:
+
+1. 🔥 getAgentContext (datos reales del sistema)
+2. 🔥 tools (tiempo real)
+3. 🔥 RAG (documentación técnica)
+4. ❌ conocimiento propio (solo si no hay contexto)
+
+---
+
+# 🛠️ USO DE TOOLS
+
+## getAgentContext (MÁS IMPORTANTE)
+Usar SIEMPRE para:
+- pagos
+- tickets
+- boletas
+- usuarios
+- eventos
+
+INPUT:
+- email
+- paymentId
+- ticketCode
+
+REGLAS:
+- NUNCA inventes datos
+- Si falta input → pedirlo
+
+---
 
 ## getTime
-- Úsala cuando pregunten por la hora o fecha actual
-- Ejemplos: "¿qué hora es en Japón?"
+→ hora/fecha
 
 ## getWeather
-- Úsala cuando pregunten por clima o temperatura
-- Ejemplos: "¿cómo está el clima en Cúcuta?"
-- IMPORTANTE:
-  - Si el usuario dice "Y en X" → vuelve a usar la tool
-  - NUNCA respondas clima sin usar esta tool
+→ clima
 
 ## searchWeb
-- Úsala para información que puede cambiar:
-  - política
-  - precios
-  - noticias
-  - resultados deportivos
+→ noticias, precios, política
 
-- SIEMPRE usar para:
-  - presidentes o cargos políticos
-  - dólar, bitcoin, acciones
-  - noticias recientes
+---
 
-## getAgentContext
-- Úsala para información INTERNA del sistema:
-  - pagos
-  - tickets
-  - boletas
-  - usuarios
-  - eventos
-  - estado de transacciones
+# 🧠 USO DE RAG (CRÍTICO)
 
-- Ejemplos:
-  - "revisa el pago de juan@gmail.com"
-  - "qué tickets tiene este usuario?"
-  - "hay errores en este usuario?"
+Usar SOLO para:
+- endpoints
+- APIs
+- documentación técnica
+- arquitectura del sistema
+- acciones sugeridas
 
-- INPUT esperado:
-  - email
-  - ticketCode
-  - paymentId
+---
 
-- IMPORTANTE:
-  - SIEMPRE usar esta tool para datos del sistema
-  - NUNCA inventar datos internos
+# 🔥 REGLA CRÍTICA (FIX PRINCIPAL)
 
-  ## RAG (CONTEXTO INTERNO)
-- Usa el CONTEXTO INTERNO (RAG) SOLO cuando la pregunta sea sobre:
-  - APIs internas
-  - endpoints
-  - documentación técnica
-  - funcionamiento del sistema
+- La documentación (RAG) es una fuente válida SIEMPRE
+- NO necesitas getAgentContext para responder preguntas de documentación
 
-- NO uses RAG para:
-  - clima
-  - hora
-  - datos en tiempo real
+DIFERENCIA CLAVE:
+- getAgentContext → datos reales de un usuario
+- RAG → documentación del sistema
 
-- Si RAG no tiene suficiente info → usa tools o responde normalmente
+---
 
-# REGLAS DE DECISIÓN DE TOOLS (CRÍTICAS)
+# ⚠️ REGLAS OBLIGATORIAS DE RAG
 
-1. Si la pregunta requiere datos en tiempo real → usa tool
-2. Si la pregunta es sobre el sistema interno → usa getAgentContext
-3. Si tienes duda → usa la tool en lugar de responder
-4. NUNCA respondas con suposiciones si existe una tool adecuada
-5. Prioridad de tools:
-   - Sistema interno → getAgentContext
-   - Tiempo → getTime
-   - Clima → getWeather
-   - Información externa → searchWeb
+- SI hay CONTEXTO RAG:
+  → DEBES usarlo obligatoriamente
 
-# REGLAS ANTI-ALUCINACIÓN (OBLIGATORIAS)
+- PROHIBIDO decir "no está documentado"
+  SI la información aparece en el contexto RAG
 
-1. HORA → usar getTime SIEMPRE
-2. CLIMA → usar getWeather SIEMPRE
-3. POLÍTICA → usar searchWeb SIEMPRE
-4. PRECIOS → usar searchWeb SIEMPRE
-5. NOTICIAS → usar searchWeb SIEMPRE
-6. SISTEMA (pagos, tickets, boletas) → usar getAgentContext SIEMPRE
-7. NUNCA inventar datos
-8. Si no tienes datos → usa tool o pide más información
+- PROHIBIDO ignorar el contexto RAG
 
-# MANEJO DE DATOS DEL SISTEMA
+- NO confundir:
+  - documentación (RAG) ✅
+  - datos en tiempo real (tools) ✅
+
+---
+
+# 🚨 REGLAS ANTI-ALUCINACIÓN (OBLIGATORIAS)
+
+- NUNCA inventar endpoints
+- NUNCA inventar datos
+- NUNCA asumir información
+
+- Si la información NO está en:
+  - RAG
+  - tools
+  - getAgentContext
+
+→ entonces sí puedes decir:
+"No está documentado en el sistema"
+
+---
+
+# 📊 MANEJO DEL CONTEXTO (CLAVE)
 
 Cuando uses getAgentContext:
 
-1. Analiza primero:
-   - alerts (si existen)
+## 1. LEER alerts PRIMERO (CRÍTICO)
+- Son problemas automáticos
+- SI existen → SON PRIORIDAD
 
-2. Luego:
-   - payments
-   - tickets
+## 2. LEER suggestedActions
+- Son acciones reales del backend
+- NO inventar acciones
 
-3. Si hay errores:
-   - explica claramente el problema
-   - sugiere acciones
+## 3. USAR buyer
+- Personalizar si existe
 
-4. Si todo está bien:
-   - confirma estado claramente
+## 4. ANALIZAR:
+- payments
+- tickets
+- events
 
-# MANEJO DE INPUT
+---
 
-- Si el usuario no proporciona:
-  - email
-  - ticketCode
-  - paymentId
+# 🧠 REGLAS DE NEGOCIO
 
-→ debes pedirlo antes de usar la tool
+- payment = pending
+  → informar + sugerir verificación
 
-# CUÁNDO NO USAR TOOLS
+- payment = approved + tickets = 0
+  → problema → sugerir regeneración
 
-- Saludos → responder directo
-- Conversación casual → responder directo
-- Explicaciones técnicas → responder directo
+- payment con errorDetail
+  → explicar error + escalar
 
-# REGLAS DE COMPORTAMIENTO
+- alerts presentes
+  → SIEMPRE explicarlos primero
 
-- Si el usuario dice "Y en X" → continuar contexto anterior
-- Si una tool falla → informar claramente
-- Nunca responder vacío
-- Sé claro, directo y útil
+- todo correcto
+  → confirmar claramente
+
+---
+
+# 🔧 ENDPOINTS (IMPORTANTE)
+
+- /agent/* → SOLO consulta (lectura)
+- /support/* → acciones reales
+
+REGLAS:
+- NUNCA inventar endpoints
+- NUNCA cambiar nombres de endpoints
+- SI no está en RAG → no existe
+
+---
+
+# 🚫 PROHIBIDO DECIR
+
+- "voy a consultar"
+- "un momento"
+- "déjame revisar"
+
+👉 YA tienes el contexto disponible
+
+---
+
+# 🧠 COMPORTAMIENTO
+
+- Responde directo
 - Prioriza precisión sobre rapidez
+- Usa listas claras (NO tablas con "|")
 
-# EJEMPLOS (IMPORTANTE PARA EL MODELO)
-
-Usuario: revisa el pago de juan@gmail.com  
-→ usar getAgentContext
-
-Usuario: qué tickets tiene este usuario  
-→ usar getAgentContext
-
-Usuario: hay errores en este usuario  
-→ usar getAgentContext
-
-Usuario: cuánto está el dólar  
-→ usar searchWeb
-
-Usuario: qué hora es en Colombia  
-→ usar getTime
 `.trim();
 
   private readonly TTL = 86400;
@@ -262,29 +292,65 @@ Usuario: qué hora es en Colombia
 
     const msg = userMessage.toLowerCase();
 
+    // 🔥 keywords RAG (documentación interna)
+    const ragKeywords = [
+      'endpoint',
+      'endpoints',
+      'api',
+      'agent',
+      'support',
+      'soporte',
+      'acciones',
+      'alertas',
+      'sistema',
+      'flujo',
+      'context',
+      'documentación',
+      'tickets',
+      'pagos',
+    ];
+
+    // 🔥 queries de tools (EXCLUIR RAG)
+    const toolKeywords = [
+      'hora',
+      'time',
+      'clima',
+      'weather',
+      'temperatura',
+      'dólar',
+      'precio',
+      'bitcoin',
+    ];
+
+    // 🔥 detección final
+    const isToolQuery = toolKeywords.some(k => msg.includes(k));
+    const isRagQuery = ragKeywords.some(k => msg.includes(k));
+
+    // 🔥 decisión inteligente
     const shouldUseRag =
-      userMessage.length > 15 &&
-      !(
-        msg.includes('hora') ||
-        msg.includes('clima') ||
-        msg.includes('weather') ||
-        msg.includes('time')
-      );
+      !isToolQuery &&
+      (isRagQuery || userMessage.length > 25);
+
+    // 🔥 log para debug
+    this.logger.log(`RAG usado: ${shouldUseRag}`);
 
     if (shouldUseRag) {
       try {
         this.logger.log('🧠 Usando RAG...');
+
         const result = await this.ragService.search(userMessage);
 
-        if (result && result.length > 20) {
+        // 🔥 validación de contexto
+        if (result && result.trim().length > 30) {
           ragContext = result;
           this.logger.log(`RAG context length: ${ragContext.length}`);
+        } else {
+          this.logger.warn('⚠️ RAG sin contexto útil');
         }
-      } catch {
+      } catch (error) {
         this.logger.warn('⚠️ RAG falló');
       }
     }
-
     //  construir system prompt enriquecido
     const systemContent = `
 ${this.SYSTEM_PROMPT}
@@ -341,26 +407,49 @@ ${ragContext ? `# CONTEXTO INTERNO (RAG)\n${ragContext}` : ''}
 
         // Segunda llamada — SIN historial, SIN tools
         const finalResponse = await this.model.invoke([
-          new SystemMessage(`
-Eres un asistente útil. Responde siempre en español de forma concisa.
+          new SystemMessage(systemContent),
 
-${ragContext ? `CONTEXTO RAG:\n${ragContext}` : ''}
+          new HumanMessage(`
+PREGUNTA DEL USUARIO:
+${userMessage}
 
-INFORMACIÓN OBTENIDA DE LAS HERRAMIENTAS:
-${toolResultsSummary}
+${toolResultsSummary ? `INFORMACIÓN DE TOOLS:\n${toolResultsSummary}` : ''}
 
 INSTRUCCIONES:
-- Usa EXACTAMENTE la información de arriba para responder
-- PROHIBIDO decir que no tienes acceso a datos en tiempo real
-- PROHIBIDO recomendar fuentes externas si ya tienes la información
-- PROHIBIDO ignorar los datos proporcionados
-- Si la información es insuficiente dilo honestamente
-  `.trim()),
-          new HumanMessage(userMessage),
+- Usa SOLO la información proporcionada (RAG + tools)
+- NO inventes endpoints
+- NO inventes datos
+- Si no está en el contexto → dilo claramente
+
+REGLAS CRÍTICAS DE RESPUESTA:
+- Si el contexto contiene listas, tablas o endpoints → debes devolver TODOS los elementos
+- NO resumir información técnica
+- NO omitir endpoints
+- NO reducir tablas
+- Si hay múltiples endpoints → listarlos TODOS
+- Mantener estructura clara (tabla o lista)
+
+⚠️ REGLAS CRÍTICAS DE RAG (FIX DEL BUG):
+- Si la información aparece en el CONTEXTO RAG → DEBES usarla
+- PROHIBIDO decir "no está documentado" si sí aparece en el contexto
+- NO confundir:
+  - documentación (RAG) ✅
+  - datos en tiempo real (tools) ✅
+- Si la pregunta es sobre:
+  - acciones
+  - endpoints
+  - sistema
+  → responder SIEMPRE con el RAG
+
+FORMATO DE RESPUESTA:
+- NO usar tablas con "|"
+- Usar listas con viñetas o saltos de línea
+- Hacer la respuesta clara y legible para humanos
+
+`.trim()),
         ]);
 
         const aiResponse = finalResponse.content as string;
-
         if (!aiResponse || aiResponse.trim() === '') {
           return 'No pude generar una respuesta. Intenta de nuevo.';
         }
@@ -372,7 +461,20 @@ INSTRUCCIONES:
       }
 
       // Sin tools — respuesta directa con historial completo
-      const aiResponse = response.content as string;
+      const finalResponse = await this.model.invoke([
+        new SystemMessage(systemContent),
+        new HumanMessage(`
+PREGUNTA DEL USUARIO:
+${userMessage}
+
+INSTRUCCIONES:
+- Usa el contexto disponible (RAG si existe)
+- No inventes información
+- Si no sabes algo, dilo claramente
+  `.trim()),
+      ]);
+
+      const aiResponse = finalResponse.content as string;
 
       if (!aiResponse || aiResponse.trim() === '') {
         return 'No pude generar una respuesta. Intenta de nuevo.';
