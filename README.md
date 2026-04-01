@@ -20,6 +20,7 @@
 </p>
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+  
 # 🤖 AI Agent Telegram (RAG + Tools + Memory + Backend API)
 
 Agente inteligente para Telegram diseñado para **uso empresarial**, capaz de responder consultas internas, acceder a APIs del negocio y utilizar conocimiento propio mediante RAG.
@@ -30,10 +31,10 @@ Agente inteligente para Telegram diseñado para **uso empresarial**, capaz de re
 
 Un **AI Agent privado para empresas**, que permite a equipos internos consultar:
 
-- 📊 información de usuarios
-- 💳 estados de pagos
-- 🎫 tickets y eventos
-- 📚 documentación interna (RAG)
+- 📊 información de usuarios  
+- 💳 estados de pagos  
+- 🎫 tickets y eventos  
+- 📚 documentación interna (RAG)  
 
 Todo desde Telegram, en lenguaje natural.
 
@@ -41,27 +42,38 @@ Todo desde Telegram, en lenguaje natural.
 
 ## 🚀 Características
 
-- 📩 Webhook en tiempo real con Telegram
-- 🧠 LLM (Mistral) para razonamiento
-- 💾 Memoria persistente por usuario (Redis)
+- 📩 Webhook en tiempo real con Telegram  
+- 🧠 LLM (Mistral) para razonamiento  
+- 💾 Memoria persistente por usuario (Redis)  
 - 🔧 Tools dinámicas:
   - Hora
   - Clima
   - Búsqueda web
-- 🔌 **Integración con backend empresarial (API real)**
-- 📚 **RAG (Retrieval-Augmented Generation)**
+- 🔌 Integración con backend empresarial (API real)  
+- 📚 RAG (Retrieval-Augmented Generation)
   - Embeddings locales (Transformers)
   - Vector DB (Chroma persistente)
-- ⚡ Arquitectura modular con NestJS
-- 🔐 Validación de entorno
-- 🧹 Comandos de control de memoria
+- ⚡ Arquitectura modular con NestJS  
+- 🔐 Validación de entorno  
+- 🧹 Comandos de control de memoria  
+
+---
+
+## 🧹 Comandos del Bot
+
+| Comando | Acción |
+|--------|------|
+| /reset | Limpia memoria del usuario |
+| /resetall | Limpia todo el contexto global |
+
+👉 Útil para testing y debugging
 
 ---
 
 ## 🧬 Stack Tecnológico
 
 | Capa | Tecnología |
-|------|--------|
+|------|-----------|
 | Backend | NestJS |
 | Runtime | Node.js |
 | LLM | Mistral (LangChain) |
@@ -78,36 +90,28 @@ Todo desde Telegram, en lenguaje natural.
 ## 🧠 Arquitectura del Agente
 
 ```txt
-Usuario (Empresa)
-        ↓
-Telegram
-        ↓
-NestJS Webhook
-        ↓
-AI Service
-        ↓
-┌────────────────────────────┐
-│        LLM (Mistral)       │
-└────────────┬───────────────┘
-             ↓
-   ┌───────────────────────┐
-   │     Decision Layer    │
-   └───────────────────────┘
-     ↓        ↓        ↓
-   RAG      Tools    API Backend
-     ↓        ↓        ↓
-   Chroma   APIs    Sistema Empresa
-     ↓
-Redis Memory
+Usuario → Telegram → Webhook → AI Service
+
+AI Service decide:
+  ├── RAG (documentación)
+  ├── Tools (clima, hora, web)
+  └── API (get_agent_context)
+
+↓
+LLM genera respuesta
+↓
+Redis guarda memoria
+↓
+Respuesta a Telegram
 📚 RAG (Conocimiento interno)
 
-El sistema utiliza archivos .md como base de conocimiento:
+El sistema usa documentos .md como base de conocimiento:
 
 AGENT_API.md
 🔄 Flujo:
 Se carga el documento
-Se divide en chunks
-Se generan embeddings (Transformers local)
+Se divide en chunks (por secciones)
+Se generan embeddings (modelo local)
 Se almacenan en Chroma
 Se recupera contexto relevante en cada consulta
 
@@ -115,30 +119,47 @@ Se recupera contexto relevante en cada consulta
 👉 Sin APIs externas
 👉 Persistente
 
-🔌 Tool empresarial (Backend API)
+🔌 Tool empresarial
 get_agent_context(identifier)
-📥 Input:
+
+Consulta información real del sistema empresarial.
+
+Input:
+
 email
-ticketCode
 paymentId
-📤 Retorna:
-información del usuario
-estado de pagos
+ticketCode
+
+Retorna:
+
+usuario
+pagos
 tickets
 eventos
-🔐 Seguridad:
-Autenticación vía API Key
-Integración backend real
-🤖 Inteligencia del agente
+alerts
+suggestedActions
+
+Tecnología:
+
+Axios
+Bearer Token (API Key)
+
+👉 Fuente de verdad del sistema
+
+🧠 Lógica del agente
 
 El agente decide automáticamente:
 
-Caso	Acción
-Pregunta interna	usa RAG
-Pregunta de usuario real	usa API
-Pregunta general	usa LLM
-Datos externos	usa tools
-🐳 Infraestructura (Docker)
+Tipo de pregunta	Acción
+Documentación / endpoints	RAG
+Datos de usuario	get_agent_context
+Clima / hora	Tools
+Conversación general	LLM
+
+👉 Regla clave:
+
+Nunca inventa datos si existe contexto
+🐳 Infraestructura
 services:
   redis:
     image: redis:alpine
@@ -147,7 +168,7 @@ services:
     image: chromadb/chroma
 
 👉 Persistencia incluida
-👉 Listo para producción
+👉 Listo para desarrollo
 
 ⚙️ Instalación
 git clone https://github.com/pucara05/telegram-langchain-bot.git
@@ -173,65 +194,35 @@ PORT=3000
 docker-compose up -d
 pnpm run start:dev
 ngrok http 3000
-
 Registrar webhook:
-
 curl -X POST https://api.telegram.org/bot<TOKEN>/setWebhook \
 -d "url=<NGROK_URL>/telegram/webhook"
 💬 Ejemplos de uso
 📊 Backend real
-"Busca el usuario con email Yennyarb32@gmail.com
+"Busca el usuario con email test@email.com
 "
-"Cuál es el estado del pago 151312334101"
+"Cuál es el estado del pago 12345"
 📚 RAG
-"Explícame el endpoint de tickets"
-"Cómo funciona la API de pagos"
+"Dime los endpoints del módulo agent"
+"Qué acciones sugiere el sistema"
 🌐 Tools
 "Qué clima hay en Bogotá"
 "Qué hora es en Madrid"
-🧠 Flujo completo
-Usuario → Telegram
-        ↓
-Webhook
-        ↓
-AI Service
-        ↓
-¿RAG?
-¿Tool?
-¿API?
-        ↓
-LLM genera respuesta
-        ↓
-Redis guarda memoria
-        ↓
-Telegram responde
-⚡ Optimización
-✅ Embeddings locales (gratis)
-✅ Persistencia en Chroma
-✅ No recalcula embeddings
-✅ Uso inteligente de RAG
-✅ Tools bajo demanda
-🏗️ Estructura
-src/
-├── ai/
-├── rag/
-│   ├── documents/
-│   └── rag.service.ts
-├── tools/
-├── telegram/
-├── config/
-🎯 Caso de uso real
-
-Este agente está diseñado para:
-
-🏢 Equipos internos de empresas
-🎫 Soporte operativo
-💳 Consulta de pagos
-📊 Acceso a datos sin dashboards
-🤖 Asistente interno inteligente
+⚠️ Limitaciones
+No ejecuta acciones reales (solo sugiere endpoints)
+Solo hay una tool empresarial (get_agent_context)
+Requiere identificador válido
+Depende del contexto RAG
+🎯 Caso de uso
+Soporte interno empresarial
+Consulta de pagos
+Gestión de tickets
+Acceso a datos sin dashboards
+Asistente interno inteligente
 📄 Licencia
 
 MIT
+
 ## Resources
 
 Check out a few resources that may come in handy when working with NestJS:
