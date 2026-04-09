@@ -55,5 +55,8 @@ pids
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-# ChromaDB data (si usas persistencia local)
-chroma-dbsrc/rag/documents/AGENT_API.md
+# ChromaDB data
+chroma-db/
+
+# Archivos sensibles RAG
+src/rag/documents/AGENT_API.md
