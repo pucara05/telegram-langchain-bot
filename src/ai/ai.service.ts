@@ -17,6 +17,7 @@ import { createSearchWebTool } from '../tools/search-web.tool';
 import { getAgentContextTool } from 'src/tools/getAgentContext';
 import { RagService } from '../rag/rag.service';
 import { Logger } from '@nestjs/common';
+import { resendEmailTool } from 'src/tools/resend-email.tool';
 
 
 @Injectable()
@@ -87,6 +88,24 @@ REGLAS:
 
 ---
 
+## resend_email
+→ reenviar correo de tickets
+
+Usar cuando el usuario diga:
+- reenviar correo
+- enviar boletas
+- no me llegaron los tickets
+- reenviar email
+
+INPUT:
+- paymentId
+
+IMPORTANTE:
+- Esta acción ejecuta un endpoint real (/support)
+- No confirmar éxito si la tool falla
+
+
+
 # 🧠 USO DE RAG (CRÍTICO)
 
 Usar SOLO para:
@@ -106,6 +125,8 @@ Usar SOLO para:
 DIFERENCIA CLAVE:
 - getAgentContext → datos reales de un usuario
 - RAG → documentación del sistema
+
+
 
 ---
 
@@ -233,6 +254,7 @@ REGLAS:
         this.config.get<string>('SERPER_API_KEY') as string,
       ),
       getAgentContextTool,
+      resendEmailTool,
     ];
 
     // Log para verificar
@@ -287,11 +309,39 @@ REGLAS:
     const userContext = rawContext ? JSON.parse(rawContext) : {};
     const contextText = this.formatContext(userContext);
 
+
+
     // 🔥 RAG — buscar contexto interno
     let ragContext = '';
 
     const msg = userMessage.toLowerCase();
 
+    // 🔥 EXECUCIÓN DIRECTA DE ACCIONES (FIX REAL)
+
+    // detectar intención de resend
+    const isResendIntent =
+      msg.includes('reenviar') ||
+      msg.includes('correo') ||
+      msg.includes('email');
+
+    // detectar paymentId (UUID)
+    const paymentIdMatch = userMessage.match(
+      /[0-9a-fA-F-]{36}/
+    );
+
+    if (isResendIntent && paymentIdMatch) {
+      const paymentId = paymentIdMatch[0];
+
+      this.logger.log(`📩 Ejecutando resend_email: ${paymentId}`);
+
+      try {
+        const result = await resendEmailTool.invoke(paymentId);
+
+        return `✅ Correo reenviado correctamente para el pago ${paymentId}`;
+      } catch (error) {
+        return `❌ No se pudo reenviar el correo para el pago ${paymentId}`;
+      }
+    }
     // 🔥 keywords RAG (documentación interna)
     const ragKeywords = [
       'endpoint',
@@ -322,14 +372,29 @@ REGLAS:
       'bitcoin',
     ];
 
-    // 🔥 detección final
+    // 🔥 detectar acciones (CRÍTICO)
+    const actionKeywords = [
+      'reenviar',
+      'enviar',
+      'correo',
+      'email',
+      'tickets',
+      'resend',
+    ];
+
+    const isActionQuery = actionKeywords.some(k => msg.includes(k));
+
+    // 🔥 tools externas
     const isToolQuery = toolKeywords.some(k => msg.includes(k));
+
+    // 🔥 RAG
     const isRagQuery = ragKeywords.some(k => msg.includes(k));
 
-    // 🔥 decisión inteligente
+    // 🔥 DECISIÓN FINAL (FIX REAL)
     const shouldUseRag =
       !isToolQuery &&
-      (isRagQuery || userMessage.length > 25);
+      !isActionQuery && // 🔥 ESTO ES LA CLAVE
+      isRagQuery;
 
     // 🔥 log para debug
     this.logger.log(`RAG usado: ${shouldUseRag}`);

@@ -12,15 +12,25 @@ export class TelegramService {
     this.apiUrl = `https://api.telegram.org/bot${token}`;
   }
 
+
+  
+
   async sendMessage(chatId: number, text: string): Promise<void> {
     try {
-      await axios.post(`${this.apiUrl}/sendMessage`, {
+      console.log("📤 Enviando mensaje:", text);
+
+      const res = await axios.post(`${this.apiUrl}/sendMessage`, {
         chat_id: chatId,
         text,
       });
-    } catch (error) {
-      this.logger.error(`❌ Error enviando mensaje al chat ${chatId}: ${error.message}`);
-      // No relanzamos el error para que el webhook responda 200 igual
+
+      console.log("✅ Telegram response:", res.data);
+
+    } catch (error: any) {
+      console.error("❌ ERROR TELEGRAM FULL:");
+      console.error("STATUS:", error.response?.status);
+      console.error("DATA:", error.response?.data);
+      console.error("MESSAGE:", error.message);
     }
   }
 }
