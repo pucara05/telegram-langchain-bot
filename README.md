@@ -20,16 +20,15 @@
 </p>
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-  
-# 🤖 AI Agent Telegram (RAG + Tools + Memory + Backend API)
+  # 🤖 AI Agent Telegram (RAG + Tools + Memory + Backend API)
 
-Agente inteligente para Telegram diseñado para **uso empresarial**, capaz de responder consultas internas, acceder a APIs del negocio y utilizar conocimiento propio mediante RAG.
+Agente inteligente para Telegram diseñado para uso empresarial, capaz de responder consultas internas, acceder a APIs del negocio y utilizar conocimiento propio mediante RAG.
 
 ---
 
 ## 🧠 ¿Qué es este proyecto?
 
-Un **AI Agent privado para empresas**, que permite a equipos internos consultar:
+Un AI Agent privado para empresas, que permite a equipos internos consultar:
 
 - 📊 información de usuarios  
 - 💳 estados de pagos  
@@ -46,9 +45,9 @@ Todo desde Telegram, en lenguaje natural.
 - 🧠 LLM (Mistral) para razonamiento  
 - 💾 Memoria persistente por usuario (Redis)  
 - 🔧 Tools dinámicas:
-  - Hora
-  - Clima
-  - Búsqueda web
+  - Hora  
+  - Clima  
+  - Búsqueda web  
 - 🔌 Integración con backend empresarial (API real)  
 - 📚 RAG (Retrieval-Augmented Generation)
   - Embeddings locales (Transformers)
@@ -61,10 +60,10 @@ Todo desde Telegram, en lenguaje natural.
 
 ## 🧹 Comandos del Bot
 
-| Comando | Acción |
-|--------|------|
-| /reset | Limpia memoria del usuario |
-| /resetall | Limpia todo el contexto global |
+| Comando   | Acción                          |
+|----------|---------------------------------|
+| /reset   | Limpia memoria del usuario      |
+| /resetall| Limpia todo el contexto global  |
 
 👉 Útil para testing y debugging
 
@@ -72,30 +71,30 @@ Todo desde Telegram, en lenguaje natural.
 
 ## 🧬 Stack Tecnológico
 
-| Capa | Tecnología |
-|------|-----------|
-| Backend | NestJS |
-| Runtime | Node.js |
-| LLM | Mistral (LangChain) |
-| Embeddings | Transformers (`@xenova/transformers`) |
-| Vector DB | Chroma |
-| Memoria | Redis (Docker) |
+| Capa        | Tecnología |
+|------------|----------|
+| Backend     | NestJS |
+| Runtime     | Node.js |
+| LLM         | Mistral (LangChain) |
+| Embeddings  | Transformers (@xenova/transformers) |
+| Vector DB   | Chroma |
+| Memoria     | Redis (Docker) |
 | API externa | Backend empresarial (Axios) |
-| Tools | OpenWeather + Serper |
-| Dev Tunnel | ngrok |
+| Tools       | OpenWeather + Serper |
+| Dev Tunnel  | ngrok |
 | Package Manager | pnpm |
 
 ---
 
 ## 🧠 Arquitectura del Agente
 
-```txt
+
 Usuario → Telegram → Webhook → AI Service
 
 AI Service decide:
-  ├── RAG (documentación)
-  ├── Tools (clima, hora, web)
-  └── API (get_agent_context)
+├── RAG (documentación)
+├── Tools (clima, hora, web)
+└── API (get_agent_context)
 
 ↓
 LLM genera respuesta
@@ -103,63 +102,104 @@ LLM genera respuesta
 Redis guarda memoria
 ↓
 Respuesta a Telegram
-📚 RAG (Conocimiento interno)
 
-El sistema usa documentos .md como base de conocimiento:
 
-AGENT_API.md
-🔄 Flujo:
-Se carga el documento
-Se divide en chunks (por secciones)
-Se generan embeddings (modelo local)
-Se almacenan en Chroma
-Se recupera contexto relevante en cada consulta
+---
 
-👉 Sin costo
-👉 Sin APIs externas
-👉 Persistente
+## 📚 RAG (Conocimiento interno)
 
-🔌 Tool empresarial
-get_agent_context(identifier)
+El sistema utiliza documentos `.md` como base de conocimiento.
+
+⚠️ **Nota importante:**  
+Los documentos no están incluidos en el repositorio por seguridad.
+
+### 👉 Cómo usar RAG
+
+Debes crear tus propios documentos en:
+
+
+src/rag/documents/
+
+
+Ejemplo:
+
+
+src/rag/documents/mi_documento.md
+
+
+Puedes incluir:
+
+- Documentación de APIs  
+- Endpoints  
+- Reglas de negocio  
+- FAQs internas  
+
+---
+
+### 🔄 Flujo
+
+- Se cargan los documentos  
+- Se dividen en chunks  
+- Se generan embeddings (modelo local)  
+- Se almacenan en Chroma  
+- Se recupera contexto relevante en cada consulta  
+
+👉 Sin costo  
+👉 Sin APIs externas  
+👉 Persistente  
+
+---
+
+## 🔌 Tool empresarial
+
+### `get_agent_context(identifier)`
 
 Consulta información real del sistema empresarial.
 
-Input:
+### Input:
 
-email
-paymentId
-ticketCode
+- email  
+- paymentId  
+- ticketCode  
 
-Retorna:
+### Retorna:
 
-usuario
-pagos
-tickets
-eventos
-alerts
-suggestedActions
+- usuario  
+- pagos  
+- tickets  
+- eventos  
+- alerts  
+- suggestedActions  
 
-Tecnología:
+### Tecnología:
 
-Axios
-Bearer Token (API Key)
+- Axios  
+- Bearer Token (API Key)  
 
 👉 Fuente de verdad del sistema
 
-🧠 Lógica del agente
+---
+
+## 🧠 Lógica del agente
 
 El agente decide automáticamente:
 
-Tipo de pregunta	Acción
-Documentación / endpoints	RAG
-Datos de usuario	get_agent_context
-Clima / hora	Tools
-Conversación general	LLM
+| Tipo de pregunta           | Acción              |
+|--------------------------|--------------------|
+| Documentación / endpoints | RAG                |
+| Datos de usuario          | get_agent_context  |
+| Clima / hora              | Tools              |
+| Conversación general      | LLM                |
 
 👉 Regla clave:
 
-Nunca inventa datos si existe contexto
-🐳 Infraestructura
+> Nunca inventa datos si existe contexto
+
+---
+
+## 🐳 Infraestructura
+
+```yaml
 services:
   redis:
     image: redis:alpine
@@ -168,13 +208,19 @@ services:
     image: chromadb/chroma
 
 👉 Persistencia incluida
+
 👉 Listo para desarrollo
 
 ⚙️ Instalación
+
 git clone https://github.com/pucara05/telegram-langchain-bot.git
+
 cd telegram-langchain-bot
+
 pnpm install
+
 🔐 Variables de entorno
+
 TELEGRAM_BOT_TOKEN=
 
 MISTRAL_API_KEY=
@@ -194,31 +240,46 @@ PORT=3000
 docker-compose up -d
 pnpm run start:dev
 ngrok http 3000
+
 Registrar webhook:
+
 curl -X POST https://api.telegram.org/bot<TOKEN>/setWebhook \
 -d "url=<NGROK_URL>/telegram/webhook"
+
 💬 Ejemplos de uso
+
 📊 Backend real
-"Busca el usuario con email test@email.com
-"
-"Cuál es el estado del pago 12345"
+
+Busca el usuario con email test@email.com
+
+Cuál es el estado del pago 12345
+
 📚 RAG
-"Dime los endpoints del módulo agent"
-"Qué acciones sugiere el sistema"
+
+Dime los endpoints del módulo agent
+
+Qué acciones sugiere el sistema
+
 🌐 Tools
-"Qué clima hay en Bogotá"
-"Qué hora es en Madrid"
+
+Qué clima hay en Bogotá
+Qué hora es en Madrid
+
 ⚠️ Limitaciones
+
 No ejecuta acciones reales (solo sugiere endpoints)
 Solo hay una tool empresarial (get_agent_context)
 Requiere identificador válido
 Depende del contexto RAG
+
 🎯 Caso de uso
+
 Soporte interno empresarial
 Consulta de pagos
 Gestión de tickets
 Acceso a datos sin dashboards
 Asistente interno inteligente
+
 📄 Licencia
 
 MIT
